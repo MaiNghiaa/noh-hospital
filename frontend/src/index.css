@@ -1,0 +1,207 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Futura is a commercial font.
+   This project currently uses the provided TTFs in `src/assets/fonts-src/`.
+   If you later add licensed .woff2 files, you can swap these URLs to .woff2 for better performance. */
+@font-face {
+  font-family: 'Futura';
+  /* Prefer locally installed Futura; fallback to bundled TTF */
+  src:
+    local('Futura'),
+    local('Futura PT'),
+    url('./assets/fonts-src/SFUFuturaRegular.TTF') format('truetype');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Futura';
+  src:
+    local('Futura'),
+    local('Futura PT'),
+    url('./assets/fonts-src/SFUFuturaBook.TTF') format('truetype');
+  font-weight: 500;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Futura';
+  src:
+    local('Futura'),
+    local('Futura PT'),
+    url('./assets/fonts-src/SFUFuturaBold.TTF') format('truetype');
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+
+@layer base {
+  * {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+  }
+
+  html {
+    scroll-behavior: smooth;
+  }
+
+  body {
+    @apply font-sans;
+    font-family: Futura, "Source Sans 3", ui-sans-serif, system-ui, sans-serif;
+    color: #1A2332;
+    background-color: #FAFBFD;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  /* Keep headings consistent with the main typeface by default.
+     If you still want the serif display font, use the existing `font-display` utility/class. */
+}
+
+/* Floating CTA (noh.vn parity: .link-dangkykham) */
+@keyframes attention-seeking {
+  0%,
+  100% {
+    transform: translate3d(0, 0, 0);
+  }
+  15% {
+    transform: translate3d(-4px, 0, 0);
+  }
+  30% {
+    transform: translate3d(4px, 0, 0);
+  }
+  45% {
+    transform: translate3d(-3px, 0, 0);
+  }
+  60% {
+    transform: translate3d(3px, 0, 0);
+  }
+  75% {
+    transform: translate3d(0, 0, 0);
+  }
+}
+
+/* Chuyên khoa — xuất hiện thẻ + vỏ lưới cố định chiều cao (tránh giật khi đổi tab) */
+@keyframes dept-card-enter {
+  from {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.dept-card-appear {
+  animation: dept-card-enter 0.48s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .dept-card-appear {
+    animation: none;
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.dept-grid-shell {
+  min-height: calc(var(--dept-rows-mobile, 3) * 308px + (var(--dept-rows-mobile, 3) - 1) * 20px);
+}
+
+@media (min-width: 640px) {
+  .dept-grid-shell {
+    min-height: calc(var(--dept-rows-desktop, 3) * 308px + (var(--dept-rows-desktop, 3) - 1) * 24px);
+  }
+}
+
+@layer components {
+  .link-dangkykham {
+    position: fixed;
+    bottom: 13px;
+    left: 0;
+    z-index: 10;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 7px 10px 6px;
+    background: #148dd6;
+    color: #fff;
+    border-radius: 4px;
+    border: 1px solid #ffffff;
+    box-shadow: 2px 2px 5px rgba(0, 0, 0, 0.25);
+    font-family: Futura, 'Source Sans 3', ui-sans-serif, system-ui, sans-serif;
+    font-size: 15px;
+    font-weight: 700;
+    line-height: 18px;
+    text-transform: uppercase;
+    text-decoration: none;
+    transition:
+      background-color 0.1s,
+      color 0.1s,
+      border-color 0.1s;
+    animation: attention-seeking 3s ease-in-out 5s 7;
+  }
+
+  .link-dangkykham:hover {
+    background-color: #fff;
+    color: #148dd6;
+    border-color: #148dd6;
+  }
+
+  .link-dangkykham:focus-visible {
+    outline: 2px solid #fff;
+    outline-offset: 2px;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .link-dangkykham {
+      animation: none;
+    }
+  }
+
+  .section-title {
+    @apply font-display text-3xl md:text-4xl font-bold text-hospital-dark relative inline-block;
+  }
+
+  .section-title::after {
+    content: '';
+    @apply absolute -bottom-2 left-0 w-16 h-1 bg-hospital-teal rounded-full;
+  }
+
+  .glass-card {
+    @apply bg-white/80 backdrop-blur-md border border-white/40 rounded-2xl shadow-lg;
+  }
+
+  .hover-lift {
+    @apply transition-all duration-300 hover:-translate-y-1 hover:shadow-xl;
+  }
+
+  .gradient-primary {
+    @apply bg-gradient-to-br from-hospital-blue via-primary-700 to-hospital-teal;
+  }
+
+  .text-gradient {
+    @apply bg-gradient-to-r from-hospital-blue to-hospital-teal bg-clip-text text-transparent;
+  }
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+}
+::-webkit-scrollbar-track {
+  background: #f1f5f9;
+}
+::-webkit-scrollbar-thumb {
+  background: #94a3b8;
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #64748b;
+}
