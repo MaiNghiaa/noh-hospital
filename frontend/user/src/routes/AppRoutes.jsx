@@ -20,6 +20,15 @@ import PatientHubPage from '../pages/PatientHubPage'
 import PatientGuideIndexPage from '../pages/PatientGuideIndexPage'
 import PatientGuideSlugRouter from '../pages/PatientGuideSlugRouter'
 
+import ProtectedRoute from '../components/auth/ProtectedRoute'
+import LoginPage from '../pages/auth/LoginPage'
+import RegisterPage from '../pages/auth/RegisterPage'
+import PatientDashboard from '../pages/auth/PatientDashboard'
+import MyAppointmentsPage from '../pages/auth/MyAppointmentsPage'
+import MyRecordsPage from '../pages/auth/MyRecordsPage'
+import MyPrescriptionsPage from '../pages/auth/MyPrescriptionsPage'
+import ProfilePage from '../pages/auth/ProfilePage'
+
 export default function AppRoutes() {
   return (
     <Routes>
@@ -66,6 +75,17 @@ export default function AppRoutes() {
       <Route path="/danh-cho-nguoi-benh/huong-dan/:slug" element={<PatientGuideSlugRouter />} />
       <Route path="/danh-cho-nguoi-benh/huong-dan" element={<PatientGuideIndexPage />} />
       <Route path="/danh-cho-nguoi-benh" element={<PatientHubPage />} />
+
+      {/* Auth Pages */}
+      <Route path="/dang-nhap" element={<LoginPage />} />
+      <Route path="/dang-ky" element={<RegisterPage />} />
+
+      {/* Protected Patient Pages */}
+      <Route path="/tai-khoan" element={<ProtectedRoute><PatientDashboard /></ProtectedRoute>} />
+      <Route path="/tai-khoan/lich-hen" element={<ProtectedRoute><MyAppointmentsPage /></ProtectedRoute>} />
+      <Route path="/tai-khoan/benh-an" element={<ProtectedRoute><MyRecordsPage /></ProtectedRoute>} />
+      <Route path="/tai-khoan/don-thuoc" element={<ProtectedRoute><MyPrescriptionsPage /></ProtectedRoute>} />
+      <Route path="/tai-khoan/ho-so" element={<ProtectedRoute><ProfilePage /></ProtectedRoute>} />
 
       {/* 404 */}
       <Route path="*" element={<NotFoundPage />} />

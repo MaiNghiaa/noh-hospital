@@ -12,8 +12,7 @@ const api = axios.create({
 // ─── Request Interceptor ───
 api.interceptors.request.use(
   (config) => {
-    // Có thể thêm token nếu cần
-    const token = localStorage.getItem('token')
+    const token = localStorage.getItem('accessToken')
     if (token) {
       config.headers.Authorization = `Bearer ${token}`
     }
@@ -31,8 +30,8 @@ api.interceptors.response.use(
     console.error(`[API Error] ${message}`)
 
     if (error.response?.status === 401) {
-      localStorage.removeItem('token')
-      window.location.href = '/login'
+      localStorage.removeItem('accessToken')
+      window.location.href = '/dang-nhap'
     }
 
     return Promise.reject({ message, status: error.response?.status })

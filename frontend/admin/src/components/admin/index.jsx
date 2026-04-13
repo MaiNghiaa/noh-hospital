@@ -127,7 +127,11 @@ export const StatusBadge = ({ status, type = 'appointment' }) => {
   const labels = type === 'appointment' ? appointmentLabels : userLabels;
 
   return (
-    <span className={`inline-flex px-2.5 py-0.5 rounded-full text-xs font-medium ${colors[status] || 'bg-gray-100 text-gray-800'}`}>
+    <span
+      className={`inline-flex whitespace-nowrap px-2.5 py-0.5 rounded-full text-xs font-medium ${
+        colors[status] || 'bg-gray-100 text-gray-800'
+      }`}
+    >
       {labels[status] || status}
     </span>
   );

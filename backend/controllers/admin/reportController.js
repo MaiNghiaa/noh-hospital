@@ -6,9 +6,9 @@ const reportController = {
   async getOverview(req, res) {
     try {
       const [[{ totalPatients }]] = await db.execute("SELECT COUNT(*) as totalPatients FROM users WHERE role = 'patient'");
-      const [[{ totalDoctors }]] = await db.execute("SELECT COUNT(*) as totalDoctors FROM doctors WHERE status = 'active'");
+      const [[{ totalDoctors }]] = await db.execute('SELECT COUNT(*) as totalDoctors FROM doctors WHERE is_active = 1');
       const [[{ totalAppointments }]] = await db.execute('SELECT COUNT(*) as totalAppointments FROM appointments');
-      const [[{ totalDepartments }]] = await db.execute("SELECT COUNT(*) as totalDepartments FROM departments WHERE status = 'active'");
+      const [[{ totalDepartments }]] = await db.execute('SELECT COUNT(*) as totalDepartments FROM departments WHERE is_active = 1');
       const [[{ pendingAppointments }]] = await db.execute("SELECT COUNT(*) as pendingAppointments FROM appointments WHERE status = 'pending'");
       const [[{ todayAppointments }]] = await db.execute("SELECT COUNT(*) as todayAppointments FROM appointments WHERE DATE(appointment_date) = CURDATE()");
 
@@ -51,11 +51,13 @@ const reportController = {
     try {
       const year = req.query.year || new Date().getFullYear();
       const [data] = await db.execute(
-        `SELECT dep.name, COUNT(a.id) as count 
+        `SELECT COALESCE(dep.name, a.department) as name, COUNT(a.id) as count
          FROM appointments a
-         LEFT JOIN departments dep ON a.department_id = dep.id
+         LEFT JOIN doctors d ON a.doctor_id = d.id
+         LEFT JOIN departments dep ON d.department_id = dep.id
          WHERE YEAR(a.appointment_date) = ?
-         GROUP BY dep.name ORDER BY count DESC`,
+         GROUP BY name
+         ORDER BY count DESC`,
         [year]
       );
       res.json({ data });
@@ -86,16 +88,21 @@ const reportController = {
   // GET /api/admin/stats/top-doctors
   async getTopDoctors(req, res) {
     try {
-      const limit = req.query.limit || 10;
+      const limitRaw = req.query.limit || 10;
+      const limit = Number.isFinite(Number.parseInt(String(limitRaw), 10))
+        ? Math.max(1, Math.min(50, Number.parseInt(String(limitRaw), 10)))
+        : 10;
       const year = req.query.year || new Date().getFullYear();
       const [data] = await db.execute(
         `SELECT d.name, d.title, dep.name as department, COUNT(a.id) as appointment_count
          FROM doctors d
          LEFT JOIN appointments a ON d.id = a.doctor_id AND YEAR(a.appointment_date) = ?
          LEFT JOIN departments dep ON d.department_id = dep.id
-         WHERE d.status = 'active'
-         GROUP BY d.id ORDER BY appointment_count DESC LIMIT ?`,
-        [year, parseInt(limit)]
+         WHERE d.is_active = 1
+         GROUP BY d.id
+         ORDER BY appointment_count DESC
+         LIMIT ${limit}`,
+        [year]
       );
       res.json({ data });
     } catch (error) {
@@ -151,7 +158,7 @@ const reportController = {
   // GET /api/admin/stats/doctors/active
   async getActiveDoctors(req, res) {
     try {
-      const [[{ count }]] = await db.execute("SELECT COUNT(*) as count FROM doctors WHERE status = 'active'");
+      const [[{ count }]] = await db.execute('SELECT COUNT(*) as count FROM doctors WHERE is_active = 1');
       res.json({ data: { count } });
     } catch (error) {
       res.status(500).json({ message: 'Lỗi server' });
@@ -183,7 +190,7 @@ const reportController = {
   // GET /api/admin/stats/departments
   async getDepartmentCount(req, res) {
     try {
-      const [[{ count }]] = await db.execute("SELECT COUNT(*) as count FROM departments WHERE status = 'active'");
+      const [[{ count }]] = await db.execute('SELECT COUNT(*) as count FROM departments WHERE is_active = 1');
       res.json({ data: { count } });
     } catch (error) {
       res.status(500).json({ message: 'Lỗi server' });
@@ -194,10 +201,10 @@ const reportController = {
   async getRecentAppointments(req, res) {
     try {
       const [data] = await db.execute(
-        `SELECT a.*, d.name as doctor_name, dep.name as department_name
+        `SELECT a.*, d.name as doctor_name, COALESCE(dep.name, a.department) as department_name
          FROM appointments a
          LEFT JOIN doctors d ON a.doctor_id = d.id
-         LEFT JOIN departments dep ON a.department_id = dep.id
+         LEFT JOIN departments dep ON d.department_id = dep.id
          ORDER BY a.created_at DESC LIMIT 10`
       );
       res.json({ data });

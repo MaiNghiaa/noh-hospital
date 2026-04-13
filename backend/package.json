@@ -6,8 +6,9 @@
   "scripts": {
     "dev": "nodemon server.js",
     "start": "node server.js",
-    "seed:admin": "node admin/scripts/seedAdmin.js",
-    "seed:medicines": "node admin/scripts/seedMedicines.js"
+    "seed:all": "node scripts/seedAll.js",
+    "seed:admin": "node scripts/admin/seedAdmin.js",
+    "seed:medicines": "node scripts/admin/seedMedicines.js"
   },
   "dependencies": {
     "bcryptjs": "^3.0.3",

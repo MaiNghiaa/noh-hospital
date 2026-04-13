@@ -10,6 +10,7 @@ const cookieParser = require('cookie-parser');
 
 const hospitalApiRoutes = require('./routes/hospital/api');
 const { authRoutes, adminRoutes, doctorRoutes } = require('./routes/admin');
+const userRoutes = require('./routes/user');
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -60,6 +61,9 @@ app.use('/api/auth', authRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/doctor', doctorRoutes);
 
+// ===== User (Patient) APIs =====
+app.use('/api/user', userRoutes);
+
 app.get('/', (req, res) => {
   res.json({
     name: 'NOH Monorepo API',
@@ -69,6 +73,7 @@ app.get('/', (req, res) => {
       adminAuth: '/api/auth/*',
       admin: '/api/admin/*',
       doctor: '/api/doctor/*',
+      user: '/api/user/*',
       uploads: '/uploads/*',
     },
   });

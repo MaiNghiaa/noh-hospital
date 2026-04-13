@@ -51,6 +51,16 @@ const doctorController = {
 
       // Update appointment status to in_progress or completed
       if (appointment_id) {
+        // Guard: 1 bác sĩ chỉ được "đang khám" 1 lịch hẹn tại 1 thời điểm
+        const [inProgress] = await db.execute(
+          "SELECT id FROM appointments WHERE doctor_id = ? AND status = 'in_progress' AND id <> ? LIMIT 1",
+          [doctorId, appointment_id]
+        );
+        if (inProgress.length > 0) {
+          return res.status(409).json({
+            message: 'Bác sĩ đang khám một lịch hẹn khác. Vui lòng hoàn thành/hủy lịch hẹn đang khám trước.',
+          });
+        }
         await db.execute("UPDATE appointments SET status = 'in_progress' WHERE id = ? AND status = 'confirmed'", [appointment_id]);
       }
 

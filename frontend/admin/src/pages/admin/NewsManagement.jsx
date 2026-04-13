@@ -1,6 +1,6 @@
 // frontend/src/pages/admin/NewsManagement.jsx
 import { useState, useEffect, useCallback } from 'react';
-import { Plus, Edit, Trash2, Globe, GlobeLock } from 'lucide-react';
+import { Plus, Edit, Trash2, Globe, GlobeLock, Image as ImageIcon } from 'lucide-react';
 import api from '../../utils/api';
 import { DataTable, ConfirmModal, FormModal } from '../../components/admin';
 
@@ -20,6 +20,7 @@ const NewsManagement = () => {
   const [confirmDelete, setConfirmDelete] = useState(null);
   const [formLoading, setFormLoading] = useState(false);
   const [form, setForm] = useState({ title: '', slug: '', content: '', category: '', summary: '', thumbnail: '' });
+  const [uploading, setUploading] = useState(false);
 
   const fetchData = useCallback(async () => {
     setLoading(true);
@@ -32,8 +33,40 @@ const NewsManagement = () => {
 
   useEffect(() => { fetchData(); }, [fetchData]);
 
-  const openAdd = () => { setEditing(null); setForm({ title: '', slug: '', content: '', category: '', summary: '', thumbnail: '' }); setShowForm(true); };
-  const openEdit = (n) => { setEditing(n); setForm({ title: n.title, slug: n.slug || '', content: n.content || '', category: n.category || '', summary: n.summary || '', thumbnail: n.thumbnail || '' }); setShowForm(true); };
+  const openAdd = () => {
+    setEditing(null);
+    setForm({ title: '', slug: '', content: '', category: '', summary: '', thumbnail: '' });
+    setShowForm(true);
+  };
+  const openEdit = (n) => {
+    setEditing(n);
+    setForm({
+      title: n.title,
+      slug: n.slug || '',
+      content: n.content || '',
+      category: n.category || '',
+      summary: n.excerpt || n.summary || '',
+      thumbnail: n.image || n.thumbnail || '',
+    });
+    setShowForm(true);
+  };
+
+  const handleUpload = async (file) => {
+    if (!file) return;
+    const fd = new FormData();
+    fd.append('image', file);
+    setUploading(true);
+    try {
+      const res = await api.post('/admin/upload', fd, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
+      setForm((prev) => ({ ...prev, thumbnail: res.data.url }));
+    } catch (err) {
+      alert(err.response?.data?.message || err.message || 'Upload ảnh thất bại');
+    } finally {
+      setUploading(false);
+    }
+  };
 
   const handleSubmit = async () => {
     setFormLoading(true);
@@ -58,7 +91,7 @@ const NewsManagement = () => {
   const columns = [
     { key: 'title', title: 'Tiêu đề', render: (val) => <span className="font-medium text-gray-800 line-clamp-1">{val}</span> },
     { key: 'category', title: 'Danh mục', render: (val) => NEWS_CATEGORIES.find(c => c.value === val)?.label || val || '—' },
-    { key: 'published', title: 'Xuất bản', render: (val) => (
+    { key: 'is_published', title: 'Xuất bản', render: (val) => (
       <span className={`inline-flex px-2.5 py-0.5 rounded-full text-xs font-medium ${val ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-600'}`}>
         {val ? 'Đã xuất bản' : 'Bản nháp'}
       </span>
@@ -67,8 +100,8 @@ const NewsManagement = () => {
     { key: 'actions', title: 'Thao tác', render: (_, row) => (
       <div className="flex items-center gap-1">
         <button onClick={() => openEdit(row)} className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg"><Edit size={16} /></button>
-        <button onClick={() => handleTogglePublish(row.id)} className="p-2 text-green-600 hover:bg-green-50 rounded-lg" title={row.published ? 'Gỡ bài' : 'Xuất bản'}>
-          {row.published ? <GlobeLock size={16} /> : <Globe size={16} />}
+        <button onClick={() => handleTogglePublish(row.id)} className="p-2 text-green-600 hover:bg-green-50 rounded-lg" title={row.is_published ? 'Gỡ bài' : 'Xuất bản'}>
+          {row.is_published ? <GlobeLock size={16} /> : <Globe size={16} />}
         </button>
         <button onClick={() => setConfirmDelete(row)} className="p-2 text-red-600 hover:bg-red-50 rounded-lg"><Trash2 size={16} /></button>
       </div>
@@ -105,6 +138,34 @@ const NewsManagement = () => {
             <label className="block text-sm font-medium text-gray-700 mb-1">Tóm tắt</label>
             <textarea value={form.summary} onChange={(e) => setForm({ ...form, summary: e.target.value })} rows={2}
               className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none" />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Ảnh bài viết</label>
+            <div className="flex items-center gap-3">
+              <label className="inline-flex items-center gap-2 px-3 py-2 border border-gray-300 rounded-lg text-sm cursor-pointer hover:bg-gray-50">
+                <ImageIcon size={16} />
+                {uploading ? 'Đang upload...' : 'Chọn ảnh'}
+                <input
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  disabled={uploading}
+                  onChange={(e) => handleUpload(e.target.files?.[0])}
+                />
+              </label>
+              <input
+                type="text"
+                value={form.thumbnail}
+                onChange={(e) => setForm({ ...form, thumbnail: e.target.value })}
+                placeholder="Hoặc dán URL ảnh..."
+                className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+              />
+            </div>
+            {form.thumbnail ? (
+              <div className="mt-3">
+                <img src={form.thumbnail} alt="thumbnail" className="h-28 w-full object-cover rounded-lg border" />
+              </div>
+            ) : null}
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Nội dung</label>

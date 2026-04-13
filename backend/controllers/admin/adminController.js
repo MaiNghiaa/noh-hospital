@@ -2,6 +2,11 @@
 const bcrypt = require('bcryptjs');
 const db = require('../../config/db').db;
 
+function toPositiveInt(value, fallback) {
+  const n = Number.parseInt(String(value), 10);
+  return Number.isFinite(n) && n > 0 ? n : fallback;
+}
+
 const adminController = {
   // ==================== DOCTOR MANAGEMENT ====================
 
@@ -24,10 +29,18 @@ const adminController = {
         await conn.beginTransaction();
 
         // Create doctor record
+        const slug = String(full_name || '')
+          .toLowerCase()
+          .normalize('NFD')
+          .replace(/[\u0300-\u036f]/g, '')
+          .replace(/đ/g, 'd')
+          .replace(/[^a-z0-9\s-]/g, '')
+          .trim()
+          .replace(/\s+/g, '-');
         const [doctorResult] = await conn.execute(
-          `INSERT INTO doctors (name, title, department_id, specialty, phone, email, description, image, status) 
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'active')`,
-          [full_name, title || '', department_id || null, specialty || '', phone || '', email, description || '', avatar_url || '']
+          `INSERT INTO doctors (name, slug, title, department_id, specialty, phone, email, bio, image, is_active)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 1)`,
+          [full_name, slug, title || '', department_id || null, specialty || '', phone || '', email, description || '', avatar_url || '']
         );
 
         // Create user account
@@ -59,7 +72,7 @@ const adminController = {
       const { name, title, department_id, specialty, phone, email, description, image } = req.body;
 
       await db.execute(
-        `UPDATE doctors SET name=?, title=?, department_id=?, specialty=?, phone=?, email=?, description=?, image=? WHERE id=?`,
+        `UPDATE doctors SET name=?, title=?, department_id=?, specialty=?, phone=?, email=?, bio=?, image=? WHERE id=?`,
         [name, title || '', department_id || null, specialty || '', phone || '', email || '', description || '', image || '', id]
       );
 
@@ -80,7 +93,7 @@ const adminController = {
   async deleteDoctor(req, res) {
     try {
       const { id } = req.params;
-      await db.execute("UPDATE doctors SET status = 'inactive' WHERE id = ?", [id]);
+      await db.execute('UPDATE doctors SET is_active = 0 WHERE id = ?', [id]);
       await db.execute('UPDATE users SET is_active = 0 WHERE doctor_id = ?', [id]);
       res.json({ message: 'Đã ẩn bác sĩ' });
     } catch (error) {
@@ -93,7 +106,7 @@ const adminController = {
   async toggleDoctor(req, res) {
     try {
       const { id } = req.params;
-      await db.execute("UPDATE doctors SET status = IF(status='active','inactive','active') WHERE id = ?", [id]);
+      await db.execute('UPDATE doctors SET is_active = IF(is_active=1,0,1) WHERE id = ?', [id]);
       await db.execute("UPDATE users SET is_active = IF(is_active=1,0,1) WHERE doctor_id = ?", [id]);
       res.json({ message: 'Đã thay đổi trạng thái bác sĩ' });
     } catch (error) {
@@ -108,21 +121,29 @@ const adminController = {
   async getAppointments(req, res) {
     try {
       const { status, doctor_id, department_id, date, page = 1, limit = 20, search } = req.query;
+      const pageInt = toPositiveInt(page, 1);
+      const limitInt = toPositiveInt(limit, 20);
+      const offsetInt = (pageInt - 1) * limitInt;
       let query = `
-        SELECT a.*, d.name as doctor_name, dep.name as department_name 
+        SELECT a.*,
+               a.full_name as patient_name,
+               a.phone as patient_phone,
+               a.email as patient_email,
+               d.name as doctor_name,
+               COALESCE(dep.name, a.department) as department_name
         FROM appointments a
         LEFT JOIN doctors d ON a.doctor_id = d.id
-        LEFT JOIN departments dep ON a.department_id = dep.id
+        LEFT JOIN departments dep ON d.department_id = dep.id
         WHERE 1=1
       `;
       const params = [];
 
       if (status) { query += ' AND a.status = ?'; params.push(status); }
       if (doctor_id) { query += ' AND a.doctor_id = ?'; params.push(doctor_id); }
-      if (department_id) { query += ' AND a.department_id = ?'; params.push(department_id); }
+      if (department_id) { query += ' AND d.department_id = ?'; params.push(department_id); }
       if (date) { query += ' AND DATE(a.appointment_date) = ?'; params.push(date); }
       if (search) {
-        query += ' AND (a.patient_name LIKE ? OR a.patient_phone LIKE ? OR a.patient_email LIKE ?)';
+        query += ' AND (a.full_name LIKE ? OR a.phone LIKE ? OR a.email LIKE ?)';
         params.push(`%${search}%`, `%${search}%`, `%${search}%`);
       }
 
@@ -131,18 +152,17 @@ const adminController = {
       const [countResult] = await db.execute(countQuery, params);
       const total = countResult[0].total;
 
-      query += ' ORDER BY a.created_at DESC LIMIT ? OFFSET ?';
-      params.push(parseInt(limit), (parseInt(page) - 1) * parseInt(limit));
+      query += ` ORDER BY a.created_at DESC LIMIT ${limitInt} OFFSET ${offsetInt}`;
 
       const [appointments] = await db.execute(query, params);
 
       res.json({
         data: appointments,
         pagination: {
-          page: parseInt(page),
-          limit: parseInt(limit),
+          page: pageInt,
+          limit: limitInt,
           total,
-          totalPages: Math.ceil(total / parseInt(limit)),
+          totalPages: Math.ceil(total / limitInt),
         },
       });
     } catch (error) {
@@ -155,10 +175,15 @@ const adminController = {
   async getAppointmentById(req, res) {
     try {
       const [appointments] = await db.execute(
-        `SELECT a.*, d.name as doctor_name, dep.name as department_name 
+        `SELECT a.*,
+                a.full_name as patient_name,
+                a.phone as patient_phone,
+                a.email as patient_email,
+                d.name as doctor_name,
+                COALESCE(dep.name, a.department) as department_name
          FROM appointments a
          LEFT JOIN doctors d ON a.doctor_id = d.id
-         LEFT JOIN departments dep ON a.department_id = dep.id
+         LEFT JOIN departments dep ON d.department_id = dep.id
          WHERE a.id = ?`,
         [req.params.id]
       );
@@ -179,6 +204,34 @@ const adminController = {
     try {
       const { id } = req.params;
       const { notes } = req.body;
+
+      const [rows] = await db.execute(
+        'SELECT id, doctor_id, appointment_date, appointment_time FROM appointments WHERE id = ?',
+        [id]
+      );
+      if (rows.length === 0) {
+        return res.status(404).json({ message: 'Không tìm thấy lịch hẹn' });
+      }
+
+      const appt = rows[0];
+      if (appt.doctor_id) {
+        const [conflicts] = await db.execute(
+          `SELECT id
+           FROM appointments
+           WHERE doctor_id = ?
+             AND appointment_date = ?
+             AND (appointment_time <=> ?)
+             AND status IN ('confirmed', 'in_progress')
+             AND id <> ?
+           LIMIT 1`,
+          [appt.doctor_id, appt.appointment_date, appt.appointment_time, appt.id]
+        );
+        if (conflicts.length > 0) {
+          return res.status(400).json({
+            message: 'Bác sĩ đã có lịch khám ở khung giờ này (đã xác nhận/đang khám). Vui lòng chọn giờ khác.',
+          });
+        }
+      }
 
       await db.execute(
         `UPDATE appointments SET status = 'confirmed', confirmed_at = NOW(), confirmed_by = ?, notes = ? WHERE id = ?`,
@@ -218,7 +271,7 @@ const adminController = {
       const m = month || new Date().getMonth() + 1;
 
       const [appointments] = await db.execute(
-        `SELECT a.id, a.patient_name, a.appointment_date, a.appointment_time, a.status, 
+        `SELECT a.id, a.full_name as patient_name, a.appointment_date, a.appointment_time, a.status,
                 d.name as doctor_name
          FROM appointments a
          LEFT JOIN doctors d ON a.doctor_id = d.id
@@ -240,6 +293,9 @@ const adminController = {
   async getPatients(req, res) {
     try {
       const { page = 1, limit = 20, search } = req.query;
+      const pageInt = toPositiveInt(page, 1);
+      const limitInt = toPositiveInt(limit, 20);
+      const offsetInt = (pageInt - 1) * limitInt;
       let query = `
         SELECT u.id, u.email, u.full_name, u.phone, u.avatar_url, u.is_active, u.created_at, u.last_login,
                p.date_of_birth, p.gender, p.address, p.insurance_number, p.blood_type
@@ -258,14 +314,15 @@ const adminController = {
       const [countResult] = await db.execute(countQuery, params);
       const total = countResult[0].total;
 
-      query += ' ORDER BY u.created_at DESC LIMIT ? OFFSET ?';
-      params.push(parseInt(limit), (parseInt(page) - 1) * parseInt(limit));
+      // NOTE: Some MySQL/MariaDB setups are picky with LIMIT/OFFSET placeholders.
+      // We inject validated integers directly to avoid ER_WRONG_ARGUMENTS.
+      query += ` ORDER BY u.created_at DESC LIMIT ${limitInt} OFFSET ${offsetInt}`;
 
       const [patients] = await db.execute(query, params);
 
       res.json({
         data: patients,
-        pagination: { page: parseInt(page), limit: parseInt(limit), total, totalPages: Math.ceil(total / parseInt(limit)) },
+        pagination: { page: pageInt, limit: limitInt, total, totalPages: Math.ceil(total / limitInt) },
       });
     } catch (error) {
       console.error('Get patients error:', error);
@@ -297,14 +354,20 @@ const adminController = {
   // GET /api/admin/patients/:id/appointments
   async getPatientAppointments(req, res) {
     try {
+      const userId = req.params.id;
+      const [patients] = await db.execute('SELECT id FROM patients WHERE user_id = ?', [userId]);
+      const patientId = patients[0]?.id || null;
+
       const [appointments] = await db.execute(
-        `SELECT a.*, d.name as doctor_name, dep.name as department_name
+        `SELECT a.*,
+                d.name as doctor_name,
+                COALESCE(dep.name, a.department) as department_name
          FROM appointments a
          LEFT JOIN doctors d ON a.doctor_id = d.id
-         LEFT JOIN departments dep ON a.department_id = dep.id
-         WHERE a.patient_id = ? OR a.patient_email = (SELECT email FROM users WHERE id = ?)
+         LEFT JOIN departments dep ON d.department_id = dep.id
+         WHERE (? IS NOT NULL AND a.patient_id = ?) OR a.email = (SELECT email FROM users WHERE id = ?)
          ORDER BY a.created_at DESC`,
-        [req.params.id, req.params.id]
+        [patientId, patientId, userId]
       );
 
       res.json({ data: appointments });
@@ -362,9 +425,17 @@ const adminController = {
   async createDepartment(req, res) {
     try {
       const { name, description, image, display_order } = req.body;
+      const slug = String(name || '')
+        .toLowerCase()
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .replace(/đ/g, 'd')
+        .replace(/[^a-z0-9\s-]/g, '')
+        .trim()
+        .replace(/\s+/g, '-');
       const [result] = await db.execute(
-        'INSERT INTO departments (name, description, image, display_order, status) VALUES (?, ?, ?, ?, "active")',
-        [name, description || '', image || '', display_order || 0]
+        'INSERT INTO departments (name, slug, type, description, image, sort_order, is_active) VALUES (?, ?, ?, ?, ?, ?, 1)',
+        [name, slug, 'lam-sang', description || '', image || '', display_order || 0]
       );
       res.status(201).json({ message: 'Tạo chuyên khoa thành công', id: result.insertId });
     } catch (error) {
@@ -377,9 +448,17 @@ const adminController = {
   async updateDepartment(req, res) {
     try {
       const { name, description, image, display_order } = req.body;
+      const slug = String(name || '')
+        .toLowerCase()
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .replace(/đ/g, 'd')
+        .replace(/[^a-z0-9\s-]/g, '')
+        .trim()
+        .replace(/\s+/g, '-');
       await db.execute(
-        'UPDATE departments SET name=?, description=?, image=?, display_order=? WHERE id=?',
-        [name, description || '', image || '', display_order || 0, req.params.id]
+        'UPDATE departments SET name=?, slug=?, description=?, image=?, sort_order=? WHERE id=?',
+        [name, slug, description || '', image || '', display_order || 0, req.params.id]
       );
       res.json({ message: 'Cập nhật chuyên khoa thành công' });
     } catch (error) {
@@ -391,7 +470,7 @@ const adminController = {
   // DELETE /api/admin/departments/:id
   async deleteDepartment(req, res) {
     try {
-      await db.execute("UPDATE departments SET status = 'inactive' WHERE id = ?", [req.params.id]);
+      await db.execute('UPDATE departments SET is_active = 0 WHERE id = ?', [req.params.id]);
       res.json({ message: 'Đã ẩn chuyên khoa' });
     } catch (error) {
       console.error('Delete department error:', error);
@@ -404,7 +483,7 @@ const adminController = {
     try {
       const { orders } = req.body; // [{id, display_order}]
       for (const item of orders) {
-        await db.execute('UPDATE departments SET display_order = ? WHERE id = ?', [item.display_order, item.id]);
+        await db.execute('UPDATE departments SET sort_order = ? WHERE id = ?', [item.display_order, item.id]);
       }
       res.json({ message: 'Đã sắp xếp lại thứ tự chuyên khoa' });
     } catch (error) {
@@ -421,9 +500,9 @@ const adminController = {
       const { title, slug, content, category, thumbnail, summary, published } = req.body;
       const autoSlug = slug || title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
       const [result] = await db.execute(
-        `INSERT INTO news (title, slug, content, category, thumbnail, summary, published, author_id, created_at) 
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, NOW())`,
-        [title, autoSlug, content || '', category || '', thumbnail || '', summary || '', published ? 1 : 0, req.user.id]
+        `INSERT INTO news (title, slug, content, category, image, excerpt, is_published, published_at, author)
+         VALUES (?, ?, ?, ?, ?, ?, ?, NOW(), ?)`,
+        [title, autoSlug, content || '', category || 'su-kien', thumbnail || '', summary || '', published ? 1 : 0, req.user.full_name || 'Admin']
       );
       res.status(201).json({ message: 'Tạo bài viết thành công', id: result.insertId });
     } catch (error) {
@@ -437,8 +516,8 @@ const adminController = {
     try {
       const { title, slug, content, category, thumbnail, summary } = req.body;
       await db.execute(
-        'UPDATE news SET title=?, slug=?, content=?, category=?, thumbnail=?, summary=? WHERE id=?',
-        [title, slug, content || '', category || '', thumbnail || '', summary || '', req.params.id]
+        'UPDATE news SET title=?, slug=?, content=?, category=?, image=?, excerpt=? WHERE id=?',
+        [title, slug, content || '', category || 'su-kien', thumbnail || '', summary || '', req.params.id]
       );
       res.json({ message: 'Cập nhật bài viết thành công' });
     } catch (error) {
@@ -450,7 +529,7 @@ const adminController = {
   // DELETE /api/admin/news/:id
   async deleteNews(req, res) {
     try {
-      await db.execute('UPDATE news SET published = 0, deleted_at = NOW() WHERE id = ?', [req.params.id]);
+      await db.execute('UPDATE news SET is_published = 0 WHERE id = ?', [req.params.id]);
       res.json({ message: 'Đã xóa bài viết' });
     } catch (error) {
       console.error('Delete news error:', error);
@@ -461,7 +540,7 @@ const adminController = {
   // PATCH /api/admin/news/:id/publish
   async togglePublishNews(req, res) {
     try {
-      await db.execute('UPDATE news SET published = IF(published=1,0,1) WHERE id = ?', [req.params.id]);
+      await db.execute('UPDATE news SET is_published = IF(is_published=1,0,1) WHERE id = ?', [req.params.id]);
       res.json({ message: 'Đã thay đổi trạng thái xuất bản' });
     } catch (error) {
       console.error('Publish news error:', error);
@@ -475,6 +554,9 @@ const adminController = {
   async getUsers(req, res) {
     try {
       const { page = 1, limit = 20, role, search } = req.query;
+      const pageInt = toPositiveInt(page, 1);
+      const limitInt = toPositiveInt(limit, 20);
+      const offsetInt = (pageInt - 1) * limitInt;
       let query = 'SELECT id, email, role, full_name, phone, avatar_url, is_active, last_login, created_at FROM users WHERE 1=1';
       const params = [];
 
@@ -488,14 +570,13 @@ const adminController = {
       const [countResult] = await db.execute(countQuery, params);
       const total = countResult[0].total;
 
-      query += ' ORDER BY created_at DESC LIMIT ? OFFSET ?';
-      params.push(parseInt(limit), (parseInt(page) - 1) * parseInt(limit));
+      query += ` ORDER BY created_at DESC LIMIT ${limitInt} OFFSET ${offsetInt}`;
 
       const [users] = await db.execute(query, params);
 
       res.json({
         data: users,
-        pagination: { page: parseInt(page), limit: parseInt(limit), total, totalPages: Math.ceil(total / parseInt(limit)) },
+        pagination: { page: pageInt, limit: limitInt, total, totalPages: Math.ceil(total / limitInt) },
       });
     } catch (error) {
       console.error('Get users error:', error);

@@ -1,11 +1,13 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { Clock, Phone, Facebook, Youtube, UserSearch } from 'lucide-react'
+import { Clock, Phone, Facebook, Youtube, User, UserSearch } from 'lucide-react'
 import { HOSPITAL_INFO } from '../../utils/constants'
 import { cn } from '../../utils/helpers'
+import { useAuth } from '../../context/AuthContext'
 
 export default function Header() {
   const [scrolled, setScrolled] = useState(false)
+  const { isAuthenticated, user } = useAuth()
 
   // Scroll detection
   useEffect(() => {
@@ -79,6 +81,31 @@ export default function Header() {
                 <Youtube size={14} />
               </a>
             </div>
+
+            {isAuthenticated ? (
+              <Link
+                to="/tai-khoan"
+                className="inline-flex items-center gap-2 whitespace-nowrap text-[#1f4d8e] hover:bg-blue-50 h-[46px] px-4 font-semibold rounded-lg transition"
+              >
+                <User size={16} />
+                {user?.full_name || 'Tài khoản'}
+              </Link>
+            ) : (
+              <div className="flex items-center gap-2">
+                <Link
+                  to="/dang-nhap"
+                  className="inline-flex items-center whitespace-nowrap text-[#1f4d8e] hover:bg-blue-50 h-[46px] px-4 font-semibold rounded-lg transition"
+                >
+                  Đăng nhập
+                </Link>
+                <Link
+                  to="/dang-ky"
+                  className="inline-flex items-center whitespace-nowrap bg-[#1f4d8e] text-white h-[46px] px-4 font-semibold rounded-lg hover:opacity-95 transition"
+                >
+                  Đăng ký
+                </Link>
+              </div>
+            )}
 
             <Link
               to="/doi-ngu-chuyen-gia"

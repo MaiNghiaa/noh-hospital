@@ -1,9 +1,12 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { CalendarPlus, CheckCircle, Phone, User, Mail, Clock } from 'lucide-react'
 import Input from '../components/common/Input'
 import Button from '../components/common/Button'
 import Modal from '../components/common/Modal'
 import { MOCK_DEPARTMENTS, HOSPITAL_INFO } from '../utils/constants'
+import appointmentService from '../services/appointmentService'
+import patientService from '../services/patientService'
+import { useAuth } from '../context/AuthContext'
 
 const initialForm = {
   fullName: '',
@@ -16,10 +19,21 @@ const initialForm = {
 }
 
 export default function AppointmentPage() {
+  const { isAuthenticated, user } = useAuth()
   const [form, setForm] = useState(initialForm)
   const [errors, setErrors] = useState({})
   const [loading, setLoading] = useState(false)
   const [showSuccess, setShowSuccess] = useState(false)
+
+  useEffect(() => {
+    if (!isAuthenticated) return
+    setForm((prev) => ({
+      ...prev,
+      fullName: user?.full_name || prev.fullName,
+      phone: user?.phone || prev.phone,
+      email: user?.email || prev.email
+    }))
+  }, [isAuthenticated, user?.full_name, user?.phone, user?.email])
 
   const handleChange = (e) => {
     const { name, value } = e.target
@@ -46,10 +60,26 @@ export default function AppointmentPage() {
     }
 
     setLoading(true)
-    // Simulate API call
     try {
-      await new Promise((r) => setTimeout(r, 1500))
-      // Thực tế: await appointmentService.create(form)
+      if (isAuthenticated) {
+        await patientService.createAppointment({
+          department: form.department,
+          doctor_id: null,
+          appointment_date: form.date,
+          appointment_time: form.time ? `${form.time}:00` : null,
+          reason: form.reason
+        })
+      } else {
+        await appointmentService.create({
+          full_name: form.fullName,
+          phone: form.phone,
+          email: form.email,
+          department: form.department,
+          date: form.date,
+          time: form.time,
+          reason: form.reason
+        })
+      }
       setShowSuccess(true)
       setForm(initialForm)
     } catch {
@@ -88,36 +118,40 @@ export default function AppointmentPage() {
 
               <form onSubmit={handleSubmit}>
                 <div className="grid sm:grid-cols-2 gap-x-5">
-                  <Input
-                    label="Họ và tên"
-                    name="fullName"
-                    value={form.fullName}
-                    onChange={handleChange}
-                    placeholder="Nguyễn Văn A"
-                    error={errors.fullName}
-                    required
-                    icon={User}
-                  />
-                  <Input
-                    label="Số điện thoại"
-                    name="phone"
-                    type="tel"
-                    value={form.phone}
-                    onChange={handleChange}
-                    placeholder="0912 345 678"
-                    error={errors.phone}
-                    required
-                    icon={Phone}
-                  />
-                  <Input
-                    label="Email"
-                    name="email"
-                    type="email"
-                    value={form.email}
-                    onChange={handleChange}
-                    placeholder="email@example.com"
-                    icon={Mail}
-                  />
+                  {!isAuthenticated ? (
+                    <>
+                      <Input
+                        label="Họ và tên"
+                        name="fullName"
+                        value={form.fullName}
+                        onChange={handleChange}
+                        placeholder="Nguyễn Văn A"
+                        error={errors.fullName}
+                        required
+                        icon={User}
+                      />
+                      <Input
+                        label="Số điện thoại"
+                        name="phone"
+                        type="tel"
+                        value={form.phone}
+                        onChange={handleChange}
+                        placeholder="0912 345 678"
+                        error={errors.phone}
+                        required
+                        icon={Phone}
+                      />
+                      <Input
+                        label="Email"
+                        name="email"
+                        type="email"
+                        value={form.email}
+                        onChange={handleChange}
+                        placeholder="email@example.com"
+                        icon={Mail}
+                      />
+                    </>
+                  ) : null}
                   <Input.Select
                     label="Chuyên khoa"
                     name="department"
