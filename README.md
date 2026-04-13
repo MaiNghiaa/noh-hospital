@@ -2,65 +2,61 @@
 
 Website fullstack hiện đại cho Bệnh viện Tai Mũi Họng Trung ương, được thiết kế lại dựa trên phân tích website gốc [noh.vn](https://noh.vn).
 
-## 📁 Cấu trúc Project
+## 📁 Cấu trúc Project (Monorepo)
 
 ```
 noh-hospital/
-├── frontend/                    # React + Vite + TailwindCSS
-│   ├── src/
-│   │   ├── components/
-│   │   │   ├── common/          # Button, Card, Input, Modal, Loader, SectionTitle
-│   │   │   └── layout/          # Header, Footer, MainLayout
-│   │   ├── pages/               # 9 pages: Home, Departments, Doctors, News, ...
-│   │   ├── routes/              # AppRoutes (React Router DOM)
-│   │   ├── services/            # Axios API services
-│   │   ├── context/             # Context API + useReducer (Global state)
-│   │   ├── hooks/               # useFetch custom hook
-│   │   └── utils/               # helpers, constants, mock data
-│   ├── index.html
-│   ├── tailwind.config.js
-│   ├── vite.config.js
-│   └── package.json
+├── frontend/
+│   ├── user/                    # React + Vite (user-facing)
+│   └── admin/                   # React + Vite (admin)
 │
-├── backend/                     # NodeJS + Express + MySQL
-│   ├── config/
-│   │   ├── database.js          # MySQL connection pool
-│   │   └── schema.sql           # Full DB schema + sample data
-│   ├── controllers/             # Department, Doctor, News, Appointment
-│   ├── models/                  # Database query models
-│   ├── routes/                  # API route definitions
-│   ├── server.js                # Express entry point
-│   ├── .env.example
-│   └── package.json
+├── backend/                     # 1 API server (Express)
+│   ├── server.js                # Entry point (mounts both hospital + admin routes)
+│   ├── config/                  # Shared config (env, db)
+│   ├── controllers/             # controllers/hospital + controllers/admin
+│   ├── routes/                  # routes/hospital + routes/admin
+│   ├── models/                  # models/hospital
+│   ├── middleware/              # middleware/admin
+│   ├── scripts/                 # scripts/admin
+│   └── uploads/                 # runtime uploads
 │
 └── README.md
 ```
 
 ## 🚀 Cài đặt & Chạy
 
-### Frontend
+### Chạy tất cả (Backend + 2 Frontend)
 
 ```bash
-cd frontend
 npm install
+
+# Tạo env cho backend (chung cho cả user+admin API)
+cp backend/.env.example backend/.env
+
 npm run dev
-# → http://localhost:3000
+# Backend: http://localhost:5001
+# Frontend user:  http://localhost:5173
+# Frontend admin: http://localhost:5174
 ```
 
-### Backend
+### Chạy riêng từng phần
 
 ```bash
-cd backend
-cp .env.example .env        # Sửa thông tin MySQL
-npm install
-npm run dev
-# → http://localhost:5000
+# Backend
+npm run dev:backend
+
+# Frontend user
+npm run dev:user
+
+# Frontend admin
+npm run dev:admin
 ```
 
 ### Database
 
 ```bash
-mysql -u root -p < backend/config/schema.sql
+# Schema chung (user + admin)
+mysql -u root -p < backend/schema.sql
 ```
 
 ## 🎯 Các trang
@@ -97,6 +93,12 @@ mysql -u root -p < backend/config/schema.sql
 | GET    | /api/news/:id         | Chi tiết tin tức      |
 | POST   | /api/appointments     | Đặt lịch khám        |
 | GET    | /api/health           | Health check          |
+
+### Admin API (tóm tắt)
+
+- **Auth**: `/api/auth/*`
+- **Admin**: `/api/admin/*`
+- **Doctor**: `/api/doctor/*`
 
 ## 💡 Đặc điểm
 

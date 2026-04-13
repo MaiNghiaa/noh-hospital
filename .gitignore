@@ -1,5 +1,6 @@
 # Dependencies
 node_modules/
+**/node_modules/
 
 # Environment — never commit secrets
 .env
@@ -10,6 +11,8 @@ node_modules/
 dist/
 build/
 .vite/
+**/dist/
+**/build/
 
 # Logs
 *.log
@@ -23,6 +26,7 @@ Thumbs.db
 
 # Uploads (runtime)
 uploads/
+backend/uploads/
 
 # Test / coverage
 coverage/

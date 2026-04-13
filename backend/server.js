@@ -1,67 +1,91 @@
-const express = require('express')
-const cors = require('cors')
-require('dotenv').config()
+const path = require('path');
+const fs = require('fs');
 
-const apiRoutes = require('./routes/api')
-const { testConnection } = require('./config/database')
+// Load env for the whole backend
+require('./config/loadEnv');
 
-const app = express()
-const PORT = process.env.PORT || 5000
+const express = require('express');
+const cors = require('cors');
+const cookieParser = require('cookie-parser');
 
-// ─── Middleware ───
-app.use(cors({
-  origin: ['http://localhost:3000', 'http://localhost:5173'],
-  credentials: true
-}))
-app.use(express.json())
-app.use(express.urlencoded({ extended: true }))
+const hospitalApiRoutes = require('./routes/hospital/api');
+const { authRoutes, adminRoutes, doctorRoutes } = require('./routes/admin');
 
-// ─── Request logging ───
-app.use((req, res, next) => {
-  console.log(`[${new Date().toLocaleTimeString()}] ${req.method} ${req.url}`)
-  next()
-})
+const app = express();
+const PORT = process.env.PORT || 5000;
 
-// ─── Routes ───
-app.use('/api', apiRoutes)
-
-// ─── Root ───
-app.get('/', (req, res) => {
-  res.json({
-    name: 'NOH Hospital API',
-    version: '1.0.0',
-    endpoints: {
-      departments: '/api/departments',
-      doctors: '/api/doctors',
-      news: '/api/news',
-      appointments: '/api/appointments',
-      health: '/api/health'
-    }
-  })
-})
-
-// ─── 404 Handler ───
-app.use((req, res) => {
-  res.status(404).json({ success: false, message: 'Route not found' })
-})
-
-// ─── Error Handler ───
-app.use((err, req, res, next) => {
-  console.error('Server Error:', err.stack)
-  res.status(500).json({ success: false, message: 'Internal server error' })
-})
-
-// ─── Start Server ───
-async function start() {
-  // Test DB connection (non-blocking)
-  await testConnection()
-
-  app.listen(PORT, () => {
-    console.log(`\n🏥 NOH Hospital API Server`)
-    console.log(`   Running on: http://localhost:${PORT}`)
-    console.log(`   API Base:   http://localhost:${PORT}/api`)
-    console.log(`   Health:     http://localhost:${PORT}/api/health\n`)
-  })
+const uploadDir = path.resolve(process.env.UPLOAD_DIR || path.join(__dirname, 'uploads'));
+if (!fs.existsSync(uploadDir)) {
+  fs.mkdirSync(uploadDir, { recursive: true });
 }
 
-start()
+const originsFromEnv = (process.env.CORS_ORIGINS || '')
+  .split(',')
+  .map((s) => s.trim())
+  .filter(Boolean);
+
+const defaultOrigins = [
+  'http://localhost:5173', // Vite (common)
+  'http://localhost:5174', // Vite second app
+  'http://localhost:3000',
+  'http://127.0.0.1:5173',
+  'http://127.0.0.1:5174',
+];
+
+app.use(
+  cors({
+    origin: originsFromEnv.length ? originsFromEnv : defaultOrigins,
+    credentials: true,
+  })
+);
+app.use(cookieParser());
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
+
+// Admin upload serving
+app.use('/uploads', express.static(uploadDir));
+
+// Request logging
+app.use((req, res, next) => {
+  console.log(`[${new Date().toLocaleTimeString()}] ${req.method} ${req.url}`);
+  next();
+});
+
+// ===== Hospital (user-facing) APIs =====
+// Keeps original endpoints: /api/departments, /api/doctors, /api/news, /api/appointments, /api/health
+app.use('/api', hospitalApiRoutes);
+
+// ===== Admin APIs =====
+app.use('/api/auth', authRoutes);
+app.use('/api/admin', adminRoutes);
+app.use('/api/doctor', doctorRoutes);
+
+app.get('/', (req, res) => {
+  res.json({
+    name: 'NOH Monorepo API',
+    version: '1.0.0',
+    endpoints: {
+      hospital: '/api/*',
+      adminAuth: '/api/auth/*',
+      admin: '/api/admin/*',
+      doctor: '/api/doctor/*',
+      uploads: '/uploads/*',
+    },
+  });
+});
+
+app.use((req, res) => {
+  res.status(404).json({ success: false, message: 'Route not found' });
+});
+
+app.use((err, req, res, next) => {
+  console.error('Server Error:', err.stack || err);
+  res.status(500).json({ success: false, message: err.message || 'Internal server error' });
+});
+
+app.listen(PORT, () => {
+  console.log(`\nNOH Monorepo API`);
+  console.log(`   http://localhost:${PORT}`);
+  console.log(`   API: http://localhost:${PORT}/api\n`);
+});
+
