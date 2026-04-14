@@ -8,7 +8,16 @@
     "start": "node server.js",
     "seed:all": "node scripts/seedAll.js",
     "seed:admin": "node scripts/admin/seedAdmin.js",
-    "seed:medicines": "node scripts/admin/seedMedicines.js"
+    "seed:medicines": "node scripts/admin/seedMedicines.js",
+    "test": "jest",
+    "test:coverage": "jest --coverage",
+    "test:watch": "jest --watch",
+    "test:hospital": "jest tests/hospital/",
+    "test:admin": "jest tests/admin/",
+    "test:doctor": "jest tests/doctor/",
+    "test:user": "jest tests/user/",
+    "test:middleware": "jest tests/middleware/",
+    "test:integration": "jest tests/integration/"
   },
   "dependencies": {
     "bcryptjs": "^3.0.3",
@@ -22,7 +31,9 @@
     "mysql2": "^3.14.0"
   },
   "devDependencies": {
-    "nodemon": "^3.1.7"
+    "jest": "^30.0.5",
+    "nodemon": "^3.1.7",
+    "supertest": "^7.1.4"
   }
 }
 

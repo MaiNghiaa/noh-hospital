@@ -15,6 +15,7 @@ import Reports from '../pages/admin/Reports';
 import DoctorDashboard from '../pages/doctor/DoctorDashboard';
 import DoctorAppointments from '../pages/doctor/DoctorAppointments';
 import DoctorPrescriptions from '../pages/doctor/DoctorPrescriptions';
+import DoctorChangePassword from '../pages/doctor/DoctorChangePassword';
 
 const AdminRoutes = () => {
   return (
@@ -72,6 +73,7 @@ const AdminRoutes = () => {
         <Route path="dashboard" element={<DoctorDashboard />} />
         <Route path="appointments" element={<DoctorAppointments />} />
         <Route path="prescriptions" element={<DoctorPrescriptions />} />
+        <Route path="change-password" element={<DoctorChangePassword />} />
       </Route>
     </Routes>
   );

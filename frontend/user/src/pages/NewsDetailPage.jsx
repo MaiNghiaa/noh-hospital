@@ -1,11 +1,40 @@
+import { useEffect, useState } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import { ChevronRight, Calendar, Tag, Share2 } from 'lucide-react'
-import { MOCK_NEWS } from '../utils/constants'
 import { formatDate } from '../utils/helpers'
+import newsService from '../services/newsService'
 
 export default function NewsDetailPage() {
   const { slug } = useParams()
-  const article = MOCK_NEWS.find((n) => n.slug === slug)
+  const [article, setArticle] = useState(null)
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    let cancelled = false
+    async function fetch() {
+      setLoading(true)
+      try {
+        const res = await newsService.getBySlug(slug)
+        if (cancelled) return
+        setArticle(res.data)
+      } catch {
+        if (cancelled) return
+        setArticle(null)
+      } finally {
+        if (!cancelled) setLoading(false)
+      }
+    }
+    fetch()
+    return () => { cancelled = true }
+  }, [slug])
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-gray-400">Đang tải...</div>
+      </div>
+    )
+  }
 
   if (!article) {
     return (
@@ -20,7 +49,8 @@ export default function NewsDetailPage() {
     )
   }
 
-  const relatedNews = MOCK_NEWS.filter((n) => n.id !== article.id).slice(0, 3)
+  const publishedDate = article.published_at || article.created_at
+  const relatedNews = []
 
   return (
     <div className="min-h-screen bg-gray-50/50">
@@ -45,11 +75,11 @@ export default function NewsDetailPage() {
                 <div className="flex items-center gap-4 text-sm text-gray-500 mb-4">
                   <span className="flex items-center gap-1.5">
                     <Calendar size={14} />
-                    {formatDate(article.date)}
+                    {formatDate(publishedDate)}
                   </span>
                   <span className="flex items-center gap-1.5">
                     <Tag size={14} />
-                    {article.categoryLabel}
+                    {article.category}
                   </span>
                 </div>
 
@@ -58,7 +88,10 @@ export default function NewsDetailPage() {
                 </h1>
 
                 <div className="mt-6 text-gray-600 leading-relaxed space-y-4 prose prose-sm max-w-none">
-                  <p>{article.excerpt}</p>
+                  {article.excerpt && <p>{article.excerpt}</p>}
+                  {article.content ? (
+                    <div dangerouslySetInnerHTML={{ __html: article.content }} />
+                  ) : null}
                   <p>
                     Bệnh viện Tai Mũi Họng Trung ương luôn tiên phong trong công tác chăm sóc sức khỏe
                     cộng đồng, đặc biệt là các chương trình khám sàng lọc miễn phí. Các hoạt động này
@@ -78,26 +111,28 @@ export default function NewsDetailPage() {
 
           {/* Sidebar */}
           <aside className="space-y-6">
-            <div className="bg-white rounded-2xl shadow-md p-6">
-              <h3 className="font-display text-lg font-bold text-hospital-dark mb-4">Tin tức liên quan</h3>
-              <div className="space-y-4">
-                {relatedNews.map((news) => (
-                  <Link key={news.id} to={`/tin-tuc/${news.slug}`} className="group flex gap-3">
-                    <img
-                      src={news.image}
-                      alt={news.title}
-                      className="w-20 h-14 rounded-lg object-cover shrink-0"
-                    />
-                    <div>
-                      <h4 className="text-sm font-bold text-hospital-dark line-clamp-2 group-hover:text-hospital-teal transition-colors leading-snug">
-                        {news.title}
-                      </h4>
-                      <span className="text-xs text-gray-400 mt-1">{formatDate(news.date)}</span>
-                    </div>
-                  </Link>
-                ))}
+            {relatedNews.length > 0 ? (
+              <div className="bg-white rounded-2xl shadow-md p-6">
+                <h3 className="font-display text-lg font-bold text-hospital-dark mb-4">Tin tức liên quan</h3>
+                <div className="space-y-4">
+                  {relatedNews.map((news) => (
+                    <Link key={news.id} to={`/tin-tuc/${news.slug}`} className="group flex gap-3">
+                      <img
+                        src={news.image}
+                        alt={news.title}
+                        className="w-20 h-14 rounded-lg object-cover shrink-0"
+                      />
+                      <div>
+                        <h4 className="text-sm font-bold text-hospital-dark line-clamp-2 group-hover:text-hospital-teal transition-colors leading-snug">
+                          {news.title}
+                        </h4>
+                        <span className="text-xs text-gray-400 mt-1">{formatDate(news.published_at || news.created_at)}</span>
+                      </div>
+                    </Link>
+                  ))}
+                </div>
               </div>
-            </div>
+            ) : null}
           </aside>
         </div>
       </div>

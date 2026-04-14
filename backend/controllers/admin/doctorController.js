@@ -11,10 +11,18 @@ const doctorController = {
       }
 
       const { date, status, page = 1, limit = 20 } = req.query;
+      const pageInt = Number.parseInt(page, 10);
+      const limitInt = Number.parseInt(limit, 10);
+      const safePage = Number.isFinite(pageInt) && pageInt > 0 ? pageInt : 1;
+      const safeLimit = Number.isFinite(limitInt) && limitInt > 0 ? Math.min(limitInt, 100) : 20;
+      const offset = (safePage - 1) * safeLimit;
+
       let query = `
-        SELECT a.*, dep.name as department_name
+        SELECT a.*,
+               COALESCE(dep.name, a.department) as department_name
         FROM appointments a
-        LEFT JOIN departments dep ON a.department_id = dep.id
+        LEFT JOIN doctors d ON a.doctor_id = d.id
+        LEFT JOIN departments dep ON d.department_id = dep.id
         WHERE a.doctor_id = ?
       `;
       const params = [doctorId];
@@ -22,13 +30,89 @@ const doctorController = {
       if (date) { query += ' AND DATE(a.appointment_date) = ?'; params.push(date); }
       if (status) { query += ' AND a.status = ?'; params.push(status); }
 
-      query += ' ORDER BY a.appointment_date DESC, a.appointment_time DESC LIMIT ? OFFSET ?';
-      params.push(parseInt(limit), (parseInt(page) - 1) * parseInt(limit));
+      query += ` ORDER BY a.appointment_date DESC, a.appointment_time DESC LIMIT ${safeLimit} OFFSET ${offset}`;
 
       const [appointments] = await db.execute(query, params);
       res.json({ data: appointments });
     } catch (error) {
       console.error('Doctor appointments error:', error);
+      res.status(500).json({ message: 'Lỗi server' });
+    }
+  },
+
+  // PATCH /api/doctor/appointments/:id/start
+  async startAppointment(req, res) {
+    try {
+      const doctorId = req.user.doctor_id;
+      const { id } = req.params;
+      if (!doctorId) {
+        return res.status(403).json({ message: 'Tài khoản không liên kết với bác sĩ nào' });
+      }
+
+      const [rows] = await db.execute(
+        `SELECT id, status, doctor_id
+         FROM appointments
+         WHERE id = ? AND doctor_id = ?`,
+        [id, doctorId]
+      );
+      if (rows.length === 0) return res.status(404).json({ message: 'Không tìm thấy lịch hẹn' });
+      const appt = rows[0];
+      if (appt.status !== 'confirmed') {
+        return res.status(400).json({ message: 'Chỉ có thể chuyển sang "đang khám" khi lịch đã xác nhận' });
+      }
+
+      // Guard: only one in_progress per doctor
+      const [inProgress] = await db.execute(
+        "SELECT id FROM appointments WHERE doctor_id = ? AND status = 'in_progress' AND id <> ? LIMIT 1",
+        [doctorId, id]
+      );
+      if (inProgress.length > 0) {
+        return res.status(409).json({
+          message: 'Bác sĩ đang khám một lịch hẹn khác. Vui lòng hoàn thành/hủy lịch hẹn đang khám trước.',
+        });
+      }
+
+      await db.execute("UPDATE appointments SET status = 'in_progress' WHERE id = ? AND doctor_id = ?", [id, doctorId]);
+      res.json({ message: 'Đã chuyển lịch sang trạng thái đang khám' });
+    } catch (error) {
+      console.error('Start appointment error:', error);
+      res.status(500).json({ message: 'Lỗi server' });
+    }
+  },
+
+  // PATCH /api/doctor/appointments/:id/complete
+  async completeAppointment(req, res) {
+    try {
+      const doctorId = req.user.doctor_id;
+      const { id } = req.params;
+      if (!doctorId) {
+        return res.status(403).json({ message: 'Tài khoản không liên kết với bác sĩ nào' });
+      }
+
+      const [rows] = await db.execute(
+        `SELECT id, status
+         FROM appointments
+         WHERE id = ? AND doctor_id = ?`,
+        [id, doctorId]
+      );
+      if (rows.length === 0) return res.status(404).json({ message: 'Không tìm thấy lịch hẹn' });
+      if (rows[0].status !== 'in_progress') {
+        return res.status(400).json({ message: 'Chỉ có thể hoàn thành khi lịch đang khám' });
+      }
+
+      // Require at least one medical record for this appointment
+      const [records] = await db.execute(
+        `SELECT id FROM medical_records WHERE appointment_id = ? AND doctor_id = ? LIMIT 1`,
+        [id, doctorId]
+      );
+      if (records.length === 0) {
+        return res.status(400).json({ message: 'Vui lòng nhập kết quả khám trước khi hoàn thành' });
+      }
+
+      await db.execute("UPDATE appointments SET status = 'completed' WHERE id = ? AND doctor_id = ?", [id, doctorId]);
+      res.json({ message: 'Đã chuyển lịch sang trạng thái hoàn thành' });
+    } catch (error) {
+      console.error('Complete appointment error:', error);
       res.status(500).json({ message: 'Lỗi server' });
     }
   },
@@ -98,23 +182,75 @@ const doctorController = {
         return res.status(400).json({ message: 'Vui lòng chọn ít nhất một loại thuốc' });
       }
 
-      for (const item of items) {
-        await db.execute(
-          `INSERT INTO prescriptions (record_id, medicine_id, quantity, dosage, duration_days, instruction)
-           VALUES (?, ?, ?, ?, ?, ?)`,
-          [record_id, item.medicine_id, item.quantity, item.dosage, item.duration_days || null, item.instruction || '']
-        );
-      }
+      const conn = await db.getConnection();
+      try {
+        await conn.beginTransaction();
 
-      // Mark appointment as completed
-      const [records] = await db.execute('SELECT appointment_id FROM medical_records WHERE id = ?', [record_id]);
-      if (records.length > 0 && records[0].appointment_id) {
-        await db.execute("UPDATE appointments SET status = 'completed' WHERE id = ?", [records[0].appointment_id]);
+        for (const item of items) {
+          const medicineId = Number(item.medicine_id);
+          const qty = Number(item.quantity) || 1;
+          if (!medicineId) {
+            throw new Error('Thiếu medicine_id');
+          }
+          if (qty <= 0) {
+            throw new Error('Số lượng thuốc không hợp lệ');
+          }
+
+          const [[med]] = await conn.execute(
+            'SELECT id, name, stock_quantity FROM medicines WHERE id = ? AND is_active = 1 LIMIT 1',
+            [medicineId]
+          );
+          if (!med) {
+            throw new Error('Thuốc không tồn tại hoặc đã ngừng hoạt động');
+          }
+          if ((med.stock_quantity ?? 0) < qty) {
+            throw new Error(`Thuốc "${med.name}" không đủ tồn kho`);
+          }
+
+          await conn.execute(
+            `INSERT INTO prescriptions (record_id, medicine_id, quantity, dosage, duration_days, instruction)
+             VALUES (?, ?, ?, ?, ?, ?)`,
+            [record_id, medicineId, qty, item.dosage, item.duration_days || null, item.instruction || '']
+          );
+
+          await conn.execute(
+            'UPDATE medicines SET stock_quantity = stock_quantity - ? WHERE id = ?',
+            [qty, medicineId]
+          );
+        }
+
+        await conn.commit();
+      } catch (e) {
+        await conn.rollback();
+        throw e;
+      } finally {
+        conn.release();
       }
 
       res.status(201).json({ message: 'Kê đơn thuốc thành công' });
     } catch (error) {
       console.error('Create prescription error:', error);
+      res.status(500).json({ message: error.message || 'Lỗi server' });
+    }
+  },
+
+  // POST /api/doctor/medicines (quick add)
+  async quickCreateMedicine(req, res) {
+    try {
+      const { name, unit, active_ingredient, category, description } = req.body;
+      if (!name || !String(name).trim()) {
+        return res.status(400).json({ message: 'Vui lòng nhập tên thuốc' });
+      }
+      const safeUnit = unit && String(unit).trim() ? String(unit).trim() : 'viên';
+      const safeCategory = category && String(category).trim() ? String(category).trim() : 'Bổ sung nhanh';
+
+      const [result] = await db.execute(
+        'INSERT INTO medicines (name, active_ingredient, unit, category, description, stock_quantity, is_active) VALUES (?, ?, ?, ?, ?, 0, 1)',
+        [String(name).trim(), active_ingredient || '', safeUnit, safeCategory, description || '']
+      );
+      res.status(201).json({ message: 'Đã thêm thuốc', id: result.insertId });
+    } catch (error) {
+      console.error('Quick create medicine error:', error);
       res.status(500).json({ message: 'Lỗi server' });
     }
   },
@@ -133,7 +269,7 @@ const doctorController = {
         [doctorId]
       );
       const [[{ pendingCount }]] = await db.execute(
-        "SELECT COUNT(*) as pendingCount FROM appointments WHERE doctor_id = ? AND status = 'pending'",
+        "SELECT COUNT(*) as pendingCount FROM appointments WHERE doctor_id = ? AND status = 'confirmed'",
         [doctorId]
       );
       const [[{ completedCount }]] = await db.execute(
@@ -142,9 +278,11 @@ const doctorController = {
       );
 
       const [todayAppointments] = await db.execute(
-        `SELECT a.*, dep.name as department_name
+        `SELECT a.*,
+                COALESCE(dep.name, a.department) as department_name
          FROM appointments a
-         LEFT JOIN departments dep ON a.department_id = dep.id
+         LEFT JOIN doctors d ON a.doctor_id = d.id
+         LEFT JOIN departments dep ON d.department_id = dep.id
          WHERE a.doctor_id = ? AND DATE(a.appointment_date) = CURDATE()
          ORDER BY a.appointment_time ASC`,
         [doctorId]

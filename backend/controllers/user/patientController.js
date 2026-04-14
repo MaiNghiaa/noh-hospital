@@ -45,6 +45,8 @@ const patientController = {
         return res.status(400).json({ success: false, message: 'Vui lòng chọn chuyên khoa và ngày khám' });
       }
 
+      const pickedDoctorId = doctor_id ? Number(doctor_id) : null;
+
       // Lấy thông tin user + patient
       const [users] = await db.execute('SELECT full_name, phone, email FROM users WHERE id = ?', [userId]);
       const [patients] = await db.execute('SELECT id FROM patients WHERE user_id = ?', [userId]);
@@ -59,7 +61,7 @@ const patientController = {
       const [result] = await db.execute(
         `INSERT INTO appointments (full_name, phone, email, department, doctor_id, appointment_date, appointment_time, reason, patient_id, status)
          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending')`,
-        [user.full_name, user.phone, user.email, department, doctor_id || null, appointment_date, appointment_time || null, reason || null, patientId]
+        [user.full_name, user.phone, user.email, department, pickedDoctorId || null, appointment_date, appointment_time || null, reason || null, patientId]
       );
 
       res.status(201).json({

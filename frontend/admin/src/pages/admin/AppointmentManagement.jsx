@@ -1,11 +1,14 @@
 // frontend/src/pages/admin/AppointmentManagement.jsx
 import { useState, useEffect, useCallback } from 'react';
-import { Check, X, Eye, Filter } from 'lucide-react';
+import { Check, X, Eye, Filter, Save } from 'lucide-react';
 import api from '../../utils/api';
 import { DataTable, SearchInput, Pagination, ConfirmModal, StatusBadge } from '../../components/admin';
 
 const AppointmentManagement = () => {
   const [appointments, setAppointments] = useState([]);
+  const [doctors, setDoctors] = useState([]);
+  const [availableDoctorsByAppt, setAvailableDoctorsByAppt] = useState({});
+  const [doctorByAppointment, setDoctorByAppointment] = useState({});
   const [pagination, setPagination] = useState({ page: 1, totalPages: 1 });
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
@@ -31,9 +34,62 @@ const AppointmentManagement = () => {
 
   useEffect(() => { fetchData(); }, [fetchData]);
 
+  useEffect(() => {
+    const prefetchAvailable = async () => {
+      try {
+        const pending = appointments.filter((a) => a.status === 'pending' && a.department_name && a.appointment_date);
+        const tasks = pending.map(async (a) => {
+          const key = a.id;
+          const params = {
+            department_name: a.department_name,
+            appointment_date: a.appointment_date,
+            appointment_time: a.appointment_time || undefined,
+          };
+          const res = await api.get('/admin/doctors/available', { params });
+          return [key, res.data.data || []];
+        });
+        const pairs = await Promise.all(tasks);
+        setAvailableDoctorsByAppt((prev) => {
+          const next = { ...prev };
+          for (const [id, list] of pairs) next[id] = list;
+          return next;
+        });
+      } catch (err) {
+        console.error(err);
+      }
+    };
+    if (appointments.length) prefetchAvailable();
+  }, [appointments]);
+
+  useEffect(() => {
+    const fetchDoctors = async () => {
+      try {
+        const res = await api.get('/doctors', { params: { limit: 200 } });
+        const list = res.data?.data || [];
+        setDoctors(list.filter((d) => d.status === 'active' || d.is_active === 1));
+      } catch (err) {
+        console.error(err);
+      }
+    };
+    fetchDoctors();
+  }, []);
+
+  const handleAssignDoctor = async (id) => {
+    try {
+      await api.patch(`/admin/appointments/${id}/assign-doctor`, {
+        doctor_id: doctorByAppointment[id] || undefined,
+      });
+      fetchData();
+    } catch (err) {
+      alert(err.response?.data?.message || 'Có lỗi xảy ra');
+    }
+  };
+
   const handleConfirm = async (id) => {
     try {
-      await api.patch(`/admin/appointments/${id}/confirm`);
+      await api.patch(`/admin/appointments/${id}/confirm`, {
+        doctor_id: doctorByAppointment[id] || undefined,
+      });
       fetchData();
     } catch (err) {
       alert(err.response?.data?.message || 'Có lỗi xảy ra');
@@ -67,7 +123,43 @@ const AppointmentManagement = () => {
         <p className="text-xs text-gray-400">{row.patient_phone}</p>
       </div>
     )},
-    { key: 'doctor_name', title: 'Bác sĩ', render: (val) => val || '—' },
+    {
+      key: 'doctor_name',
+      title: 'Bác sĩ',
+      render: (val, row) => {
+        if (row.status === 'pending' && !row.doctor_id) {
+          const options = availableDoctorsByAppt[row.id] || [];
+          return (
+            <div className="flex items-center gap-2">
+              <select
+                value={doctorByAppointment[row.id] ?? (row.doctor_id ? String(row.doctor_id) : '')}
+                onChange={(e) => setDoctorByAppointment((prev) => ({ ...prev, [row.id]: e.target.value }))}
+                className="min-w-[220px] px-2 py-1.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+                disabled={options.length === 0}
+              >
+                <option value="">
+                  {options.length === 0 ? 'Không có bác sĩ phù hợp' : '-- Chọn bác sĩ --'}
+                </option>
+                {options.map((d) => (
+                  <option key={d.id} value={d.id}>
+                    {d.title ? `${d.title} ` : ''}{d.name}
+                  </option>
+                ))}
+              </select>
+              <button
+                onClick={() => handleAssignDoctor(row.id)}
+                className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg"
+                title="Lưu bác sĩ"
+                disabled={options.length === 0 || !doctorByAppointment[row.id]}
+              >
+                <Save size={16} />
+              </button>
+            </div>
+          );
+        }
+        return val || '—';
+      },
+    },
     { key: 'department_name', title: 'Chuyên khoa', render: (val) => val || '—' },
     { key: 'appointment_date', title: 'Ngày khám', render: (val, row) => (
       <div>

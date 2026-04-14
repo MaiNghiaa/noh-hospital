@@ -30,11 +30,13 @@ router.post('/doctors', requireRole('admin', 'super_admin'), adminController.cre
 router.put('/doctors/:id', requireRole('admin', 'super_admin'), adminController.updateDoctor);
 router.delete('/doctors/:id', requireRole('admin', 'super_admin'), adminController.deleteDoctor);
 router.patch('/doctors/:id/toggle', requireRole('admin', 'super_admin'), adminController.toggleDoctor);
+router.get('/doctors/available', requireRole('admin', 'super_admin'), adminController.getAvailableDoctors);
 
 // ==================== APPOINTMENTS ====================
 router.get('/appointments', requireRole('admin', 'super_admin', 'doctor'), adminController.getAppointments);
 router.get('/appointments/calendar', requireRole('admin', 'super_admin'), adminController.getAppointmentCalendar);
 router.get('/appointments/:id', requireRole('admin', 'super_admin', 'doctor'), adminController.getAppointmentById);
+router.patch('/appointments/:id/assign-doctor', requireRole('admin', 'super_admin'), adminController.assignAppointmentDoctor);
 router.patch('/appointments/:id/confirm', requireRole('admin', 'super_admin'), adminController.confirmAppointment);
 router.patch('/appointments/:id/cancel', requireRole('admin', 'super_admin'), adminController.cancelAppointment);
 
@@ -68,6 +70,7 @@ router.patch('/users/:id/reset-password', requireRole('super_admin'), adminContr
 router.get('/medicines', requireRole('admin', 'super_admin', 'doctor'), adminController.getMedicines);
 router.post('/medicines', requireRole('admin', 'super_admin'), adminController.createMedicine);
 router.put('/medicines/:id', requireRole('admin', 'super_admin'), adminController.updateMedicine);
+router.patch('/medicines/:id/stock-in', requireRole('admin', 'super_admin'), adminController.stockInMedicine);
 
 // ==================== UPLOAD ====================
 router.post('/upload', requireRole('admin', 'super_admin'), upload.single('image'), (req, res) => {

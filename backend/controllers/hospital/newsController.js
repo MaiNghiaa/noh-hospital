@@ -12,7 +12,7 @@ const newsController = {
       let data
       try {
         data = category
-          ? await News.getByCategory(category)
+          ? await News.getByCategory(category, Number(page), Number(limit))
           : await News.getAll(Number(page), Number(limit))
       } catch {
         const filtered = category ? mockNews.filter(n => n.category === category) : mockNews
@@ -31,6 +31,21 @@ const newsController = {
         data = await News.getById(req.params.id)
       } catch {
         data = mockNews.find(n => n.id === Number(req.params.id))
+      }
+      if (!data) return res.status(404).json({ success: false, message: 'Không tìm thấy' })
+      res.json({ success: true, data })
+    } catch (error) {
+      res.status(500).json({ success: false, message: error.message })
+    }
+  },
+
+  async getBySlug(req, res) {
+    try {
+      let data
+      try {
+        data = await News.getBySlug(req.params.slug)
+      } catch {
+        data = mockNews.find(n => n.slug === req.params.slug)
       }
       if (!data) return res.status(404).json({ success: false, message: 'Không tìm thấy' })
       res.json({ success: true, data })

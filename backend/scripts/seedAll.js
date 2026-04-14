@@ -237,8 +237,20 @@ async function seed() {
       const d = doctors[i];
       const deptId = d.dept + 1; // dept index -> id (auto_increment starts at 1)
       await connection.execute(
-        `INSERT INTO doctors (name, slug, title, specialty, department_id, experience, education, is_active, sort_order) VALUES (?, ?, ?, ?, ?, ?, ?, 1, ?)`,
-        [d.name, slugify(d.name), d.title, d.specialty, deptId, d.exp, d.edu, i + 1]
+        `INSERT INTO doctors (name, slug, title, specialty, department_id, experience, education, email, phone, is_active, sort_order)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?)`,
+        [
+          d.name,
+          slugify(d.name),
+          d.title,
+          d.specialty,
+          deptId,
+          d.exp,
+          d.edu,
+          `${slugify(d.name).replace(/-/g, '.')}@noh.vn`,
+          randomPhone(),
+          i + 1,
+        ]
       );
     }
     console.log(`   ✅ ${doctors.length} doctors`);
@@ -311,9 +323,10 @@ async function seed() {
     for (let i = 0; i < doctors.length; i++) {
       const d = doctors[i];
       const email = slugify(d.name).replace(/-/g, '.') + '@noh.vn';
+      const phone = randomPhone();
       await connection.execute(
         `INSERT INTO users (email, password_hash, role, full_name, phone, doctor_id, is_active) VALUES (?, ?, 'doctor', ?, ?, ?, 1)`,
-        [email, hashedDoctor, d.name, randomPhone(), i + 1]
+        [email, hashedDoctor, d.name, phone, i + 1]
       );
     }
 

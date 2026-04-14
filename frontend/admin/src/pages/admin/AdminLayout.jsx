@@ -5,7 +5,7 @@ import { useAuth } from '../../context/AuthContext';
 import {
   LayoutDashboard, Stethoscope, Users, Calendar, Building2,
   Newspaper, Pill, Shield, BarChart3, ClipboardList, CalendarCheck,
-  LogOut, Menu, X, ChevronDown
+  LogOut, Menu, X, ChevronDown, KeyRound
 } from 'lucide-react';
 
 const AdminLayout = () => {
@@ -34,6 +34,7 @@ const AdminLayout = () => {
   const doctorMenuItems = [
     { label: 'Dashboard Bác sĩ', icon: ClipboardList, path: '/doctor/dashboard', roles: ['doctor'] },
     { label: 'Lịch hẹn của tôi', icon: CalendarCheck, path: '/doctor/appointments', roles: ['doctor'] },
+    { label: 'Đổi mật khẩu', icon: KeyRound, path: '/doctor/change-password', roles: ['doctor'] },
   ];
 
   const allMenuItems = [...adminMenuItems, ...doctorMenuItems];

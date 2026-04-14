@@ -1,16 +1,8 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
-import { MOCK_DEPARTMENTS } from '../utils/constants'
+import departmentService from '../services/departmentService'
 
 const PAGE_SIZE = 6
-
-const CLINICAL_ITEMS = MOCK_DEPARTMENTS.filter((d) => d.type === 'lam-sang')
-const PARACLINICAL_ITEMS = MOCK_DEPARTMENTS.filter((d) => d.type === 'can-lam-sang')
-
-const TABS = [
-  { id: 'lam-sang', label: 'Khối lâm sàng', items: CLINICAL_ITEMS },
-  { id: 'can-lam-sang', label: 'Khối cận lâm sàng', items: PARACLINICAL_ITEMS },
-]
 
 /** Số hàng lưới tối đa (theo trang) để giữ chiều cao vùng danh sách ổn định khi đổi tab */
 function maxGridRows(itemCount, cols, pageSize) {
@@ -27,14 +19,46 @@ function maxGridRows(itemCount, cols, pageSize) {
 export default function DepartmentsPage() {
   const [searchParams, setSearchParams] = useSearchParams()
   const typeParam = searchParams.get('type')
+  const [allItems, setAllItems] = useState([])
+  const [loading, setLoading] = useState(true)
 
   const activeTabId = useMemo(() => {
     if (typeParam === 'can-lam-sang') return 'can-lam-sang'
     return 'lam-sang'
   }, [typeParam])
 
-  const activeTab = TABS.find((t) => t.id === activeTabId) || TABS[0]
+  const clinicalItems = useMemo(() => allItems.filter((d) => d.type === 'lam-sang'), [allItems])
+  const paraclinicalItems = useMemo(() => allItems.filter((d) => d.type === 'can-lam-sang'), [allItems])
+
+  const tabs = useMemo(
+    () => ([
+      { id: 'lam-sang', label: 'Khối lâm sàng', items: clinicalItems },
+      { id: 'can-lam-sang', label: 'Khối cận lâm sàng', items: paraclinicalItems },
+    ]),
+    [clinicalItems, paraclinicalItems]
+  )
+
+  const activeTab = tabs.find((t) => t.id === activeTabId) || tabs[0]
   const [page, setPage] = useState(0)
+
+  useEffect(() => {
+    let cancelled = false
+    async function fetch() {
+      setLoading(true)
+      try {
+        const res = await departmentService.getAll()
+        if (cancelled) return
+        setAllItems(res.data || [])
+      } catch {
+        if (cancelled) return
+        setAllItems([])
+      } finally {
+        if (!cancelled) setLoading(false)
+      }
+    }
+    fetch()
+    return () => { cancelled = true }
+  }, [])
 
   const setTab = useCallback(
     (id) => {
@@ -69,12 +93,12 @@ export default function DepartmentsPage() {
   )
 
   const shellRowsMobile = Math.max(
-    maxGridRows(CLINICAL_ITEMS.length, 1, PAGE_SIZE),
-    maxGridRows(PARACLINICAL_ITEMS.length, 1, PAGE_SIZE),
+    maxGridRows(clinicalItems.length, 1, PAGE_SIZE),
+    maxGridRows(paraclinicalItems.length, 1, PAGE_SIZE),
   )
   const shellRowsDesktop = Math.max(
-    maxGridRows(CLINICAL_ITEMS.length, 2, PAGE_SIZE),
-    maxGridRows(PARACLINICAL_ITEMS.length, 2, PAGE_SIZE),
+    maxGridRows(clinicalItems.length, 2, PAGE_SIZE),
+    maxGridRows(paraclinicalItems.length, 2, PAGE_SIZE),
   )
 
   return (
@@ -85,7 +109,7 @@ export default function DepartmentsPage() {
         </h1>
 
         <div className="mb-8 flex justify-center gap-10 border-b border-gray-200">
-          {TABS.map((tab) => {
+          {tabs.map((tab) => {
             const isActive = tab.id === activeTabId
             return (
               <button
@@ -107,6 +131,9 @@ export default function DepartmentsPage() {
           })}
         </div>
 
+        {loading ? (
+          <div className="py-20 text-center text-gray-400">Đang tải...</div>
+        ) : (
         <div
           className="dept-grid-shell"
           style={{
@@ -150,6 +177,7 @@ export default function DepartmentsPage() {
             })}
           </ul>
         </div>
+        )}
 
         {pageCount > 1 ? (
           <div className="mt-8 flex justify-center gap-2">

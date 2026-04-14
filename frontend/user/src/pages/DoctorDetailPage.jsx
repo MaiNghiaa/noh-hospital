@@ -1,11 +1,40 @@
+import { useEffect, useState } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import { ChevronRight, GraduationCap, Briefcase, Building2, CalendarPlus } from 'lucide-react'
 import Button from '../components/common/Button'
-import { MOCK_DOCTORS } from '../utils/constants'
+import doctorService from '../services/doctorService'
 
 export default function DoctorDetailPage() {
   const { id } = useParams()
-  const doctor = MOCK_DOCTORS.find((d) => d.id === Number(id))
+  const [doctor, setDoctor] = useState(null)
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    let cancelled = false
+    async function fetch() {
+      setLoading(true)
+      try {
+        const res = await doctorService.getById(id)
+        if (cancelled) return
+        setDoctor(res.data)
+      } catch {
+        if (cancelled) return
+        setDoctor(null)
+      } finally {
+        if (!cancelled) setLoading(false)
+      }
+    }
+    fetch()
+    return () => { cancelled = true }
+  }, [id])
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-gray-400">Đang tải...</div>
+      </div>
+    )
+  }
 
   if (!doctor) {
     return (
@@ -39,14 +68,14 @@ export default function DoctorDetailPage() {
         <div className="grid lg:grid-cols-3 gap-8">
           {/* Profile Card */}
           <div className="lg:col-span-1">
-            <div className="bg-white rounded-2xl shadow-md overflow-hidden sticky top-[130px]">
+            <div className="bg-white rounded-2xl shadow-md overflow-hidden lg:sticky lg:top-[130px]">
               <div className="aspect-[4/3] overflow-hidden">
                 <img src={doctor.image} alt={doctor.name} className="w-full h-full object-cover" />
               </div>
               <div className="p-6 text-center">
                 <h1 className="font-display text-xl font-bold text-hospital-dark">{doctor.name}</h1>
-                <p className="text-sm text-hospital-teal font-semibold mt-1">{doctor.title}</p>
-                <p className="text-sm text-gray-500 mt-1">{doctor.department}</p>
+                {doctor.title && <p className="text-sm text-hospital-teal font-semibold mt-1">{doctor.title}</p>}
+                <p className="text-sm text-gray-500 mt-1">{doctor.department_name}</p>
 
                 <Link to="/dat-lich-kham" className="block mt-5">
                   <Button variant="accent" className="w-full" icon={CalendarPlus}>
@@ -65,7 +94,7 @@ export default function DoctorDetailPage() {
               <div className="space-y-5">
                 {[
                   { icon: Briefcase, label: 'Chuyên ngành', value: doctor.specialty },
-                  { icon: Building2, label: 'Khoa', value: doctor.department },
+                  { icon: Building2, label: 'Khoa', value: doctor.department_name },
                   { icon: GraduationCap, label: 'Đào tạo', value: doctor.education },
                   { icon: Briefcase, label: 'Kinh nghiệm', value: doctor.experience }
                 ].map((item) => (
@@ -91,7 +120,7 @@ export default function DoctorDetailPage() {
                   bác sĩ đã điều trị thành công cho hàng nghìn bệnh nhân.
                 </p>
                 <p>
-                  Bác sĩ tốt nghiệp {doctor.education}, hiện đang công tác tại {doctor.department}.
+                  Bác sĩ tốt nghiệp {doctor.education}, hiện đang công tác tại {doctor.department_name}.
                   Ngoài công tác khám chữa bệnh, bác sĩ còn tham gia giảng dạy và nghiên cứu khoa học.
                 </p>
               </div>

@@ -24,15 +24,15 @@ export default function MyPrescriptionsPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
+      <div className="min-h-[60vh] flex items-center justify-center">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 py-8">
+    <div>
+      <div className="max-w-4xl mx-auto">
         <div className="flex items-center gap-3 mb-6">
           <Link to="/tai-khoan" className="p-2 hover:bg-gray-200 rounded-lg transition">
             <ChevronLeft className="w-5 h-5" />

@@ -148,6 +148,19 @@
     animation: attention-seeking 3s ease-in-out 5s 7;
   }
 
+  @media (max-width: 639px) {
+    .link-dangkykham {
+      left: 12px;
+      bottom: 12px;
+      padding: 8px 10px;
+      font-size: 12px;
+      line-height: 14px;
+      border-radius: 10px;
+      max-width: calc(100vw - 24px);
+      white-space: nowrap;
+    }
+  }
+
   .link-dangkykham:hover {
     background-color: #fff;
     color: #148dd6;

@@ -8,6 +8,7 @@ const appointmentController = require('../../controllers/hospital/appointmentCon
 
 // ─── Departments ───
 router.get('/departments', departmentController.getAll)
+router.get('/departments/slug/:slug', departmentController.getBySlug)
 router.get('/departments/:id', departmentController.getById)
 
 // ─── Doctors ───
@@ -17,6 +18,7 @@ router.get('/doctors/:id', doctorController.getById)
 
 // ─── News ───
 router.get('/news', newsController.getAll)
+router.get('/news/slug/:slug', newsController.getBySlug)
 router.get('/news/:id', newsController.getById)
 
 // ─── Appointments ───

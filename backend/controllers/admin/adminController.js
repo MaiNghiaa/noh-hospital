@@ -13,15 +13,33 @@ const adminController = {
   // POST /api/admin/doctors
   async createDoctor(req, res) {
     try {
-      const { full_name, title, department_id, specialty, phone, email, password, description, avatar_url } = req.body;
+      const {
+        // support both admin FE + test payloads
+        name,
+        slug: slugFromBody,
+        full_name,
+        title,
+        department_id,
+        specialty,
+        phone,
+        email,
+        password,
+        description,
+        avatar_url,
+        image,
+      } = req.body;
 
-      if (!full_name || !email || !password) {
-        return res.status(400).json({ message: 'Vui lòng nhập đầy đủ thông tin bắt buộc' });
+      const displayName = full_name || name;
+      if (!displayName) {
+        return res.status(400).json({ message: 'Vui lòng nhập tên bác sĩ' });
       }
 
-      const [existing] = await db.execute('SELECT id FROM users WHERE email = ?', [email]);
-      if (existing.length > 0) {
-        return res.status(400).json({ message: 'Email đã tồn tại trong hệ thống' });
+      // Only validate/create user when email+password are provided
+      if (email && password) {
+        const [existing] = await db.execute('SELECT id FROM users WHERE email = ?', [email]);
+        if (existing.length > 0) {
+          return res.status(400).json({ message: 'Email đã tồn tại trong hệ thống' });
+        }
       }
 
       const conn = await db.getConnection();
@@ -29,7 +47,9 @@ const adminController = {
         await conn.beginTransaction();
 
         // Create doctor record
-        const slug = String(full_name || '')
+        const slug =
+          slugFromBody ||
+          String(displayName || '')
           .toLowerCase()
           .normalize('NFD')
           .replace(/[\u0300-\u036f]/g, '')
@@ -40,16 +60,28 @@ const adminController = {
         const [doctorResult] = await conn.execute(
           `INSERT INTO doctors (name, slug, title, department_id, specialty, phone, email, bio, image, is_active)
            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 1)`,
-          [full_name, slug, title || '', department_id || null, specialty || '', phone || '', email, description || '', avatar_url || '']
+          [
+            displayName,
+            slug,
+            title || '',
+            department_id || null,
+            specialty || '',
+            phone || '',
+            email || '',
+            description || '',
+            avatar_url || image || '',
+          ]
         );
 
-        // Create user account
-        const hashedPassword = await bcrypt.hash(password, 12);
-        await conn.execute(
-          `INSERT INTO users (email, password_hash, role, full_name, phone, avatar_url, doctor_id, is_active) 
-           VALUES (?, ?, 'doctor', ?, ?, ?, ?, 1)`,
-          [email, hashedPassword, full_name, phone || '', avatar_url || '', doctorResult.insertId]
-        );
+        // Optional: Create user account for doctor portal
+        if (email && password) {
+          const hashedPassword = await bcrypt.hash(password, 12);
+          await conn.execute(
+            `INSERT INTO users (email, password_hash, role, full_name, phone, avatar_url, doctor_id, is_active) 
+             VALUES (?, ?, 'doctor', ?, ?, ?, ?, 1)`,
+            [email, hashedPassword, displayName, phone || '', avatar_url || image || '', doctorResult.insertId]
+          );
+        }
 
         await conn.commit();
         res.status(201).json({ message: 'Tạo bác sĩ thành công', doctorId: doctorResult.insertId });
@@ -70,16 +102,26 @@ const adminController = {
     try {
       const { id } = req.params;
       const { name, title, department_id, specialty, phone, email, description, image } = req.body;
+      const imageParam = image === undefined ? null : image;
 
       await db.execute(
-        `UPDATE doctors SET name=?, title=?, department_id=?, specialty=?, phone=?, email=?, bio=?, image=? WHERE id=?`,
-        [name, title || '', department_id || null, specialty || '', phone || '', email || '', description || '', image || '', id]
+        `UPDATE doctors
+         SET name=?,
+             title=?,
+             department_id=?,
+             specialty=?,
+             phone=?,
+             email=?,
+             bio=?,
+             image=COALESCE(?, image)
+         WHERE id=?`,
+        [name, title || '', department_id || null, specialty || '', phone || '', email || '', description || '', imageParam, id]
       );
 
       // Also update user record if exists
       await db.execute(
-        `UPDATE users SET full_name=?, phone=?, avatar_url=? WHERE doctor_id=?`,
-        [name, phone || '', image || '', id]
+        `UPDATE users SET full_name=?, phone=?, avatar_url=COALESCE(?, avatar_url) WHERE doctor_id=?`,
+        [name, phone || '', imageParam, id]
       );
 
       res.json({ message: 'Cập nhật bác sĩ thành công' });
@@ -203,7 +245,7 @@ const adminController = {
   async confirmAppointment(req, res) {
     try {
       const { id } = req.params;
-      const { notes } = req.body;
+      const { notes, doctor_id } = req.body;
 
       const [rows] = await db.execute(
         'SELECT id, doctor_id, appointment_date, appointment_time FROM appointments WHERE id = ?',
@@ -214,7 +256,24 @@ const adminController = {
       }
 
       const appt = rows[0];
-      if (appt.doctor_id) {
+      const pickedDoctorId = doctor_id ? Number(doctor_id) : appt.doctor_id;
+      if (pickedDoctorId) {
+        const [doctorRows] = await db.execute('SELECT id, is_active FROM doctors WHERE id = ? LIMIT 1', [pickedDoctorId]);
+        if (doctorRows.length === 0) {
+          return res.status(400).json({ message: 'Bác sĩ được chọn không tồn tại' });
+        }
+        if (!doctorRows[0].is_active) {
+          return res.status(400).json({ message: 'Bác sĩ được chọn đang ngưng hoạt động' });
+        }
+
+        const [inProgress] = await db.execute(
+          `SELECT id FROM appointments WHERE doctor_id = ? AND status = 'in_progress' AND id <> ? LIMIT 1`,
+          [pickedDoctorId, appt.id]
+        );
+        if (inProgress.length > 0) {
+          return res.status(409).json({ message: 'Bác sĩ đang khám (in progress). Vui lòng chọn bác sĩ khác.' });
+        }
+
         const [conflicts] = await db.execute(
           `SELECT id
            FROM appointments
@@ -224,7 +283,7 @@ const adminController = {
              AND status IN ('confirmed', 'in_progress')
              AND id <> ?
            LIMIT 1`,
-          [appt.doctor_id, appt.appointment_date, appt.appointment_time, appt.id]
+          [pickedDoctorId, appt.appointment_date, appt.appointment_time, appt.id]
         );
         if (conflicts.length > 0) {
           return res.status(400).json({
@@ -234,8 +293,14 @@ const adminController = {
       }
 
       await db.execute(
-        `UPDATE appointments SET status = 'confirmed', confirmed_at = NOW(), confirmed_by = ?, notes = ? WHERE id = ?`,
-        [req.user.id, notes || null, id]
+        `UPDATE appointments
+         SET doctor_id = COALESCE(?, doctor_id),
+             status = 'confirmed',
+             confirmed_at = NOW(),
+             confirmed_by = ?,
+             notes = ?
+         WHERE id = ?`,
+        [pickedDoctorId || null, req.user.id, notes || null, id]
       );
 
       res.json({ message: 'Đã xác nhận lịch hẹn' });
@@ -259,6 +324,121 @@ const adminController = {
       res.json({ message: 'Đã hủy lịch hẹn' });
     } catch (error) {
       console.error('Cancel appointment error:', error);
+      res.status(500).json({ message: 'Lỗi server' });
+    }
+  },
+
+  // PATCH /api/admin/appointments/:id/assign-doctor
+  async assignAppointmentDoctor(req, res) {
+    try {
+      const { id } = req.params;
+      const { doctor_id } = req.body;
+
+      const pickedDoctorId = doctor_id ? Number(doctor_id) : null;
+      if (!pickedDoctorId) {
+        return res.status(400).json({ message: 'Vui lòng chọn bác sĩ' });
+      }
+
+      const [apptRows] = await db.execute(
+        `SELECT id, appointment_date, appointment_time, status
+         FROM appointments
+         WHERE id = ?`,
+        [id]
+      );
+      if (apptRows.length === 0) {
+        return res.status(404).json({ message: 'Không tìm thấy lịch hẹn' });
+      }
+      const appt = apptRows[0];
+      if (appt.status !== 'pending') {
+        return res.status(400).json({ message: 'Chỉ có thể gán bác sĩ khi lịch đang chờ xác nhận' });
+      }
+
+      const [doctorRows] = await db.execute('SELECT id, is_active FROM doctors WHERE id = ? LIMIT 1', [pickedDoctorId]);
+      if (doctorRows.length === 0) return res.status(400).json({ message: 'Bác sĩ được chọn không tồn tại' });
+      if (!doctorRows[0].is_active) return res.status(400).json({ message: 'Bác sĩ được chọn đang ngưng hoạt động' });
+
+      // If doctor currently has an in-progress appointment, don't assign more
+      const [inProgress] = await db.execute(
+        `SELECT id FROM appointments WHERE doctor_id = ? AND status = 'in_progress' LIMIT 1`,
+        [pickedDoctorId]
+      );
+      if (inProgress.length > 0) {
+        return res.status(409).json({ message: 'Bác sĩ đang khám (in progress). Vui lòng chọn bác sĩ khác.' });
+      }
+
+      const [conflicts] = await db.execute(
+        `SELECT id
+         FROM appointments
+         WHERE doctor_id = ?
+           AND appointment_date = ?
+           AND (appointment_time <=> ?)
+           AND status IN ('confirmed', 'in_progress')
+           AND id <> ?
+         LIMIT 1`,
+        [pickedDoctorId, appt.appointment_date, appt.appointment_time, appt.id]
+      );
+      if (conflicts.length > 0) {
+        return res.status(400).json({
+          message: 'Bác sĩ đã có lịch khám ở khung giờ này (đã xác nhận/đang khám). Vui lòng chọn bác sĩ khác.',
+        });
+      }
+
+      await db.execute('UPDATE appointments SET doctor_id = ? WHERE id = ?', [pickedDoctorId, id]);
+      res.json({ message: 'Đã gán bác sĩ cho lịch hẹn' });
+    } catch (error) {
+      console.error('Assign doctor error:', error);
+      res.status(500).json({ message: 'Lỗi server' });
+    }
+  },
+
+  // GET /api/admin/doctors/available?department_name=&appointment_date=&appointment_time=
+  async getAvailableDoctors(req, res) {
+    try {
+      const { department_name, appointment_date, appointment_time } = req.query;
+      if (!department_name || !appointment_date) {
+        return res.status(400).json({ message: 'Thiếu department_name hoặc appointment_date' });
+      }
+
+      // department_name may actually be a slug (legacy data: appointments.department stored as slug)
+      const [[dept]] = await db.execute(
+        'SELECT id FROM departments WHERE name = ? OR slug = ? LIMIT 1',
+        [department_name, department_name]
+      );
+      if (!dept?.id) {
+        return res.json({ data: [] });
+      }
+
+      const params = [dept.id, appointment_date];
+      let timeSql = '';
+      if (appointment_time) {
+        timeSql = 'AND a.appointment_time = ?';
+        params.push(appointment_time);
+      }
+
+      const [rows] = await db.execute(
+        `SELECT d.id, d.name, d.title
+         FROM doctors d
+         WHERE d.is_active = 1
+           AND d.department_id = ?
+           AND NOT EXISTS (
+             SELECT 1 FROM appointments a
+             WHERE a.doctor_id = d.id
+               AND a.status = 'in_progress'
+           )
+           AND NOT EXISTS (
+             SELECT 1 FROM appointments a
+             WHERE a.doctor_id = d.id
+               AND a.appointment_date = ?
+               ${timeSql}
+               AND a.status IN ('confirmed', 'in_progress')
+           )
+         ORDER BY d.sort_order, d.name`,
+        params
+      );
+
+      res.json({ data: rows });
+    } catch (error) {
+      console.error('Get available doctors error:', error);
       res.status(500).json({ message: 'Lỗi server' });
     }
   },
@@ -672,10 +852,10 @@ const adminController = {
   // POST /api/admin/medicines
   async createMedicine(req, res) {
     try {
-      const { name, active_ingredient, unit, category, description } = req.body;
+      const { name, active_ingredient, unit, category, description, stock_quantity } = req.body;
       const [result] = await db.execute(
-        'INSERT INTO medicines (name, active_ingredient, unit, category, description) VALUES (?, ?, ?, ?, ?)',
-        [name, active_ingredient || '', unit, category || '', description || '']
+        'INSERT INTO medicines (name, active_ingredient, unit, category, description, stock_quantity) VALUES (?, ?, ?, ?, ?, ?)',
+        [name, active_ingredient || '', unit, category || '', description || '', Number(stock_quantity) || 0]
       );
       res.status(201).json({ message: 'Thêm thuốc thành công', id: result.insertId });
     } catch (error) {
@@ -687,14 +867,32 @@ const adminController = {
   // PUT /api/admin/medicines/:id
   async updateMedicine(req, res) {
     try {
-      const { name, active_ingredient, unit, category, description, is_active } = req.body;
+      const { name, active_ingredient, unit, category, description, is_active, stock_quantity } = req.body;
       await db.execute(
-        'UPDATE medicines SET name=?, active_ingredient=?, unit=?, category=?, description=?, is_active=? WHERE id=?',
-        [name, active_ingredient || '', unit, category || '', description || '', is_active !== undefined ? is_active : 1, req.params.id]
+        'UPDATE medicines SET name=?, active_ingredient=?, unit=?, category=?, description=?, stock_quantity=?, is_active=? WHERE id=?',
+        [name, active_ingredient || '', unit, category || '', description || '', Number(stock_quantity) || 0, is_active !== undefined ? is_active : 1, req.params.id]
       );
       res.json({ message: 'Cập nhật thuốc thành công' });
     } catch (error) {
       console.error('Update medicine error:', error);
+      res.status(500).json({ message: 'Lỗi server' });
+    }
+  },
+
+  // PATCH /api/admin/medicines/:id/stock-in
+  async stockInMedicine(req, res) {
+    try {
+      const { id } = req.params;
+      const { quantity } = req.body;
+      const qty = Number(quantity);
+      if (!Number.isFinite(qty) || qty <= 0) {
+        return res.status(400).json({ message: 'Số lượng nhập kho không hợp lệ' });
+      }
+
+      await db.execute('UPDATE medicines SET stock_quantity = stock_quantity + ? WHERE id = ?', [qty, id]);
+      res.json({ message: 'Nhập kho thành công' });
+    } catch (error) {
+      console.error('Stock in error:', error);
       res.status(500).json({ message: 'Lỗi server' });
     }
   },

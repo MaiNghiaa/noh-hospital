@@ -7,6 +7,9 @@ import Button from '../components/common/Button'
 import HomeLegalDocumentsSection from '../components/home/HomeLegalDocumentsSection'
 import HomeTrainingLineSection from '../components/home/HomeTrainingLineSection'
 import { QUICK_LINKS, MOCK_DEPARTMENTS, MOCK_DOCTORS, MOCK_NEWS, HOSPITAL_INFO } from '../utils/constants'
+import departmentService from '../services/departmentService'
+import doctorService from '../services/doctorService'
+import newsService from '../services/newsService'
 import { truncateText, formatShortDate } from '../utils/helpers'
 import { cn } from '../utils/helpers'
 import WebsitePartnerLinks from '../components/layout/WebsitePartnerLinks'
@@ -21,6 +24,29 @@ function deptCardsPerView(clientWidth) {
 }
 
 export default function HomePage() {
+  const [homeDepartments, setHomeDepartments] = useState(MOCK_DEPARTMENTS)
+  const [homeDoctors, setHomeDoctors] = useState(MOCK_DOCTORS)
+  const [homeNews, setHomeNews] = useState(MOCK_NEWS)
+  useEffect(() => {
+    let cancelled = false
+    async function fetchHome() {
+      try {
+        const [depRes, docRes, newsRes] = await Promise.all([
+          departmentService.getAll(),
+          doctorService.getAll({ page: 1, limit: 6 }),
+          newsService.getAll(1, 5),
+        ])
+        if (cancelled) return
+        setHomeDepartments(depRes.data || MOCK_DEPARTMENTS)
+        setHomeDoctors(docRes.data || MOCK_DOCTORS)
+        setHomeNews(newsRes.data || MOCK_NEWS)
+      } catch {
+        // keep MOCK as fallback
+      }
+    }
+    fetchHome()
+    return () => { cancelled = true }
+  }, [])
   const deptScrollRef = useRef(null)
   const [deptPagination, setDeptPagination] = useState({
     pageCount: 0,
@@ -196,7 +222,7 @@ export default function HomePage() {
             className="w-full overflow-x-auto scroll-smooth [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden snap-x snap-mandatory"
           >
             <div className="flex w-max gap-[10px]">
-              {MOCK_DEPARTMENTS.slice(0, 8).map((dept, i) => (
+              {homeDepartments.slice(0, 8).map((dept, i) => (
               <Link
                 key={dept.id}
                 to={`/chuyen-khoa/${dept.slug}`}
@@ -390,25 +416,25 @@ export default function HomePage() {
           <div className="grid lg:grid-cols-3 gap-6">
             {/* Featured news */}
             <div className="lg:col-span-2">
-              {MOCK_NEWS[0] && (
-                <Link to={`/tin-tuc/${MOCK_NEWS[0].slug}`} className="group block">
+              {homeNews[0] && (
+                <Link to={`/tin-tuc/${homeNews[0].slug}`} className="group block">
                   <Card padding={false} className="h-full overflow-hidden">
                     <div className="relative aspect-[16/9] overflow-hidden">
                       <img
-                        src={MOCK_NEWS[0].image}
-                        alt={MOCK_NEWS[0].title}
+                        src={homeNews[0].image}
+                        alt={homeNews[0].title}
                         className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
                       />
                       <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent" />
                       <div className="absolute bottom-0 left-0 right-0 p-6">
                         <span className="inline-block px-3 py-1 bg-hospital-teal text-white text-xs font-bold rounded-lg mb-3">
-                          {MOCK_NEWS[0].categoryLabel}
+                          {homeNews[0].category}
                         </span>
                         <h3 className="font-display text-xl lg:text-2xl font-bold text-white leading-snug">
-                          {MOCK_NEWS[0].title}
+                          {homeNews[0].title}
                         </h3>
                         <p className="text-white/80 text-sm mt-2 line-clamp-2">
-                          {MOCK_NEWS[0].excerpt}
+                          {homeNews[0].excerpt}
                         </p>
                       </div>
                     </div>
@@ -419,8 +445,8 @@ export default function HomePage() {
 
             {/* News list */}
             <div className="space-y-4">
-              {MOCK_NEWS.slice(1, 5).map((news) => {
-                const { day, month } = formatShortDate(news.date)
+              {homeNews.slice(1, 5).map((news) => {
+                const { day, month } = formatShortDate(news.published_at || news.created_at)
                 return (
                   <Link key={news.id} to={`/tin-tuc/${news.slug}`} className="group block">
                     <Card className="!p-4 flex gap-4 items-start">
@@ -429,7 +455,7 @@ export default function HomePage() {
                         <span className="text-xs text-gray-500">T{month}</span>
                       </div>
                       <div className="flex-1 min-w-0">
-                        <span className="text-xs text-hospital-teal font-semibold">{news.categoryLabel}</span>
+                        <span className="text-xs text-hospital-teal font-semibold">{news.category}</span>
                         <h4 className="text-sm font-bold text-hospital-dark leading-snug mt-1 line-clamp-2 group-hover:text-hospital-teal transition-colors">
                           {news.title}
                         </h4>
@@ -453,7 +479,7 @@ export default function HomePage() {
           />
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-            {MOCK_DOCTORS.slice(0, 6).map((doctor, i) => (
+            {homeDoctors.slice(0, 6).map((doctor, i) => (
               <Link
                 key={doctor.id}
                 to={`/doi-ngu-chuyen-gia/${doctor.id}`}
@@ -470,13 +496,13 @@ export default function HomePage() {
                     <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent" />
                     <div className="absolute bottom-3 left-3">
                       <span className="inline-block px-2.5 py-1 bg-white/90 backdrop-blur-sm rounded-lg text-xs font-semibold text-hospital-blue">
-                        {doctor.department}
+                        {doctor.department_name || doctor.department}
                       </span>
                     </div>
                   </div>
                   <div className="p-5">
                     <h3 className="font-display text-base font-bold text-hospital-dark group-hover:text-hospital-teal transition-colors">
-                      {doctor.name}
+                      {doctor.title ? `${doctor.title} ` : ''}{doctor.name}
                     </h3>
                     <p className="text-sm text-gray-500 mt-1">{doctor.specialty}</p>
                     <p className="text-xs text-accent-600 font-medium mt-2">{doctor.experience}</p>

@@ -4,7 +4,7 @@ import { HOSPITAL_INFO } from '../../utils/constants'
 import { cn } from '../../utils/helpers'
 
 const footerBarLink = cn(
-  'inline-flex items-center gap-1.5 text-[19px] font-normal text-gray-900 transition-colors',
+  'inline-flex items-center gap-1.5 text-[15px] sm:text-[16px] lg:text-[19px] font-normal text-gray-900 transition-colors',
   'whitespace-nowrap hover:text-[#0066CC]'
 )
 
@@ -117,7 +117,7 @@ export default function Footer() {
                   {COLUMN_LINKS_A.map((item) => (
                     <Link key={item.path + item.label} to={item.path} className={footerBarLink}>
                       {item.label}
-                      <span aria-hidden className="text-[19px] text-gray-500">
+                      <span aria-hidden className="text-[16px] sm:text-[18px] lg:text-[19px] text-gray-500">
                         →
                       </span>
                     </Link>
@@ -127,7 +127,7 @@ export default function Footer() {
                   {COLUMN_LINKS_B.map((item) => (
                     <Link key={item.path + item.label} to={item.path} className={footerBarLink}>
                       {item.label}
-                      <span aria-hidden className="text-[19px] text-gray-500">
+                      <span aria-hidden className="text-[16px] sm:text-[18px] lg:text-[19px] text-gray-500">
                         →
                       </span>
                     </Link>
@@ -138,8 +138,8 @@ export default function Footer() {
           </div>
         </div>
 
-        <div className="flex h-[65px] items-center justify-center bg-[#1f4d8e] px-[20px] text-center">
-          <p className="text-[19px] font-bold leading-snug text-white">
+        <div className="flex min-h-[56px] items-center justify-center bg-[#1f4d8e] px-4 py-3 text-center">
+          <p className="text-[13px] sm:text-[15px] lg:text-[19px] font-bold leading-snug text-white">
             Bệnh viện Tai Mũi Họng TW. Thiết kế bởi 3SSOFT {year} ©
           </p>
         </div>

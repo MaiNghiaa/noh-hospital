@@ -40,6 +40,22 @@ const departmentController = {
     } catch (error) {
       res.status(500).json({ success: false, message: error.message })
     }
+  },
+
+  // GET /api/departments/slug/:slug
+  async getBySlug(req, res) {
+    try {
+      let data
+      try {
+        data = await Department.getBySlug(req.params.slug)
+      } catch {
+        data = mockDepartments.find(d => d.slug === req.params.slug)
+      }
+      if (!data) return res.status(404).json({ success: false, message: 'Không tìm thấy' })
+      res.json({ success: true, data })
+    } catch (error) {
+      res.status(500).json({ success: false, message: error.message })
+    }
   }
 }
 

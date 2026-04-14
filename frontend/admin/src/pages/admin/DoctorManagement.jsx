@@ -39,18 +39,22 @@ const DoctorManagement = () => {
   const [editingDoctor, setEditingDoctor] = useState(null);
   const [confirmDelete, setConfirmDelete] = useState(null);
   const [formLoading, setFormLoading] = useState(false);
-  const [form, setForm] = useState({ name: '', title: '', department_id: '', specialty: '', phone: '', email: '', password: '', description: '' });
+  const [form, setForm] = useState({ name: '', title: '', department_id: '', specialty: '', phone: '', email: '', password: '', description: '', image: '' });
   const [avatarFile, setAvatarFile] = useState(null);
   const [uploading, setUploading] = useState(false);
 
   const fetchDoctors = useCallback(async () => {
     setLoading(true);
     try {
+      const doctorReq = search
+        ? api.get('/doctors/search', { params: { q: search, page: 1, limit: 200 } })
+        : api.get('/doctors', { params: { page: 1, limit: 200 } });
       const [docRes, deptRes] = await Promise.all([
-        api.get('/doctors', { params: { search } }),
+        doctorReq,
         api.get('/departments'),
       ]);
-      setDoctors(docRes.data.data || docRes.data);
+      // Public doctor APIs return { success: true, data: [...] }
+      setDoctors(docRes.data.data || []);
       setDepartments(deptRes.data.data || deptRes.data);
     } catch (err) {
       console.error(err);
@@ -63,14 +67,24 @@ const DoctorManagement = () => {
 
   const openAddForm = () => {
     setEditingDoctor(null);
-    setForm({ name: '', title: '', department_id: '', specialty: '', phone: '', email: '', password: '', description: '' });
+    setForm({ name: '', title: '', department_id: '', specialty: '', phone: '', email: '', password: '', description: '', image: '' });
     setAvatarFile(null);
     setShowForm(true);
   };
 
   const openEditForm = (doc) => {
     setEditingDoctor(doc);
-    setForm({ name: doc.name, title: doc.title || '', department_id: doc.department_id || '', specialty: doc.specialty || '', phone: doc.phone || '', email: doc.email || '', password: '', description: doc.description || '' });
+    setForm({
+      name: doc.name,
+      title: doc.title || '',
+      department_id: doc.department_id || '',
+      specialty: doc.specialty || '',
+      phone: doc.phone || '',
+      email: doc.email || '',
+      password: '',
+      description: doc.description || doc.bio || '',
+      image: doc.image || '',
+    });
     setAvatarFile(null);
     setShowForm(true);
   };
@@ -83,6 +97,9 @@ const DoctorManagement = () => {
     try {
       const res = await api.post('/admin/upload', fd, { headers: { 'Content-Type': 'multipart/form-data' } });
       return res.data.url;
+    } catch (err) {
+      alert(err.response?.data?.message || 'Upload ảnh thất bại');
+      return null;
     } finally {
       setUploading(false);
     }
@@ -93,9 +110,9 @@ const DoctorManagement = () => {
     try {
       const avatarUrl = await uploadAvatarIfNeeded();
       if (editingDoctor) {
-        await api.put(`/admin/doctors/${editingDoctor.id}`, { ...form, image: avatarUrl || form.image });
+        await api.put(`/admin/doctors/${editingDoctor.id}`, { ...form, image: avatarUrl || form.image || editingDoctor.image || '' });
       } else {
-        await api.post('/admin/doctors', { full_name: form.name, ...form, avatar_url: avatarUrl || '' });
+        await api.post('/admin/doctors', { full_name: form.name, ...form, image: avatarUrl || form.image || '' });
       }
       setShowForm(false);
       fetchDoctors();
@@ -259,6 +276,16 @@ const DoctorManagement = () => {
               <span className="text-sm text-gray-500">
                 {avatarFile ? avatarFile.name : 'Chưa chọn ảnh'}
               </span>
+              {(avatarFile || form.image) && (
+                <img
+                  src={avatarFile ? URL.createObjectURL(avatarFile) : form.image}
+                  alt="preview"
+                  className="ml-auto w-12 h-12 rounded-full object-cover border border-gray-200"
+                  onLoad={(e) => {
+                    if (avatarFile) URL.revokeObjectURL(e.currentTarget.src);
+                  }}
+                />
+              )}
             </div>
           </div>
         </div>

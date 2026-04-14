@@ -1,4 +1,7 @@
 import { Routes, Route, Navigate } from 'react-router-dom'
+import MainLayout from '../components/layout/MainLayout'
+import AuthLayout from '../components/layout/AuthLayout'
+import PatientLayout from '../components/layout/PatientLayout'
 import HomePage from '../pages/HomePage'
 import DepartmentsPage from '../pages/DepartmentsPage'
 import DepartmentDetailPage from '../pages/DepartmentDetailPage'
@@ -32,63 +35,71 @@ import ProfilePage from '../pages/auth/ProfilePage'
 export default function AppRoutes() {
   return (
     <Routes>
-      <Route path="/" element={<HomePage />} />
+      {/* Auth routes use a dedicated layout (no Header/Footer/Hero) */}
+      <Route element={<AuthLayout />}>
+        <Route path="/dang-nhap" element={<LoginPage />} />
+        <Route path="/dang-ky" element={<RegisterPage />} />
+      </Route>
 
-      {/* Chuyên khoa */}
-      <Route path="/chuyen-khoa" element={<DepartmentsPage />} />
-      <Route path="/chuyen-khoa/:slug" element={<DepartmentDetailPage />} />
+      {/* Patient portal uses a dedicated layout (not the public website layout) */}
+      <Route element={<ProtectedRoute><PatientLayout /></ProtectedRoute>}>
+        <Route path="/tai-khoan" element={<PatientDashboard />} />
+        <Route path="/tai-khoan/lich-hen" element={<MyAppointmentsPage />} />
+        <Route path="/tai-khoan/benh-an" element={<MyRecordsPage />} />
+        <Route path="/tai-khoan/don-thuoc" element={<MyPrescriptionsPage />} />
+        <Route path="/tai-khoan/ho-so" element={<ProfilePage />} />
+      </Route>
 
-      {/* Đội ngũ chuyên gia */}
-      <Route path="/doi-ngu-chuyen-gia" element={<DoctorsPage />} />
-      <Route path="/doi-ngu-chuyen-gia/:id" element={<DoctorDetailPage />} />
+      {/* Main website routes use the main layout */}
+      <Route element={<MainLayout />}>
+        <Route path="/" element={<HomePage />} />
 
-      {/* Tin tức */}
-      <Route path="/tin-tuc" element={<NewsPage />} />
-      <Route path="/tin-tuc/:slug" element={<NewsDetailPage />} />
+        {/* Chuyên khoa */}
+        <Route path="/chuyen-khoa" element={<DepartmentsPage />} />
+        <Route path="/chuyen-khoa/:slug" element={<DepartmentDetailPage />} />
 
-      {/* Đặt lịch khám */}
-      <Route path="/dat-lich-kham" element={<AppointmentPage />} />
+        {/* Đội ngũ chuyên gia */}
+        <Route path="/doi-ngu-chuyen-gia" element={<DoctorsPage />} />
+        <Route path="/doi-ngu-chuyen-gia/:id" element={<DoctorDetailPage />} />
 
-      {/* Liên hệ */}
-      <Route path="/lien-he" element={<ContactPage />} />
+        {/* Tin tức */}
+        <Route path="/tin-tuc" element={<NewsPage />} />
+        <Route path="/tin-tuc/:slug" element={<NewsDetailPage />} />
 
-      {/* Giới thiệu */}
-      <Route path="/gioi-thieu/:slug" element={<AboutSectionPage />} />
-      <Route path="/gioi-thieu" element={<AboutPage />} />
+        {/* Đặt lịch khám */}
+        <Route path="/dat-lich-kham" element={<AppointmentPage />} />
 
-      {/* Văn bản pháp lý (chi tiết từng mục trên trang chủ) */}
-      <Route path="/vbpl/:slug" element={<LegalDocumentPage />} />
+        {/* Liên hệ */}
+        <Route path="/lien-he" element={<ContactPage />} />
 
-      {/* Đào tạo - Chỉ đạo tuyến (tin từ khối trang chủ) */}
-      <Route path="/dao-tao-chi-dao-tuyen/:slug" element={<TrainingLineArticlePage />} />
+        {/* Giới thiệu */}
+        <Route path="/gioi-thieu/:slug" element={<AboutSectionPage />} />
+        <Route path="/gioi-thieu" element={<AboutPage />} />
 
-      {/* Dành cho học viên — tuyển sinh */}
-      <Route path="/danh-cho-hoc-vien/thong-tin-tuyen-sinh/:slug" element={<AdmissionDetailPage />} />
-      <Route path="/danh-cho-hoc-vien/thong-tin-tuyen-sinh" element={<AdmissionsPage />} />
-      <Route path="/danh-cho-hoc-vien/mau-van-ban-giay-to" element={<DocumentTemplatePage />} />
-      <Route
-        path="/danh-cho-hoc-vien"
-        element={<Navigate to="/danh-cho-hoc-vien/thong-tin-tuyen-sinh" replace />}
-      />
+        {/* Văn bản pháp lý (chi tiết từng mục trên trang chủ) */}
+        <Route path="/vbpl/:slug" element={<LegalDocumentPage />} />
 
-      {/* Dành cho người bệnh */}
-      <Route path="/danh-cho-nguoi-benh/huong-dan/:slug" element={<PatientGuideSlugRouter />} />
-      <Route path="/danh-cho-nguoi-benh/huong-dan" element={<PatientGuideIndexPage />} />
-      <Route path="/danh-cho-nguoi-benh" element={<PatientHubPage />} />
+        {/* Đào tạo - Chỉ đạo tuyến (tin từ khối trang chủ) */}
+        <Route path="/dao-tao-chi-dao-tuyen/:slug" element={<TrainingLineArticlePage />} />
 
-      {/* Auth Pages */}
-      <Route path="/dang-nhap" element={<LoginPage />} />
-      <Route path="/dang-ky" element={<RegisterPage />} />
+        {/* Dành cho học viên — tuyển sinh */}
+        <Route path="/danh-cho-hoc-vien/thong-tin-tuyen-sinh/:slug" element={<AdmissionDetailPage />} />
+        <Route path="/danh-cho-hoc-vien/thong-tin-tuyen-sinh" element={<AdmissionsPage />} />
+        <Route path="/danh-cho-hoc-vien/mau-van-ban-giay-to" element={<DocumentTemplatePage />} />
+        <Route
+          path="/danh-cho-hoc-vien"
+          element={<Navigate to="/danh-cho-hoc-vien/thong-tin-tuyen-sinh" replace />}
+        />
 
-      {/* Protected Patient Pages */}
-      <Route path="/tai-khoan" element={<ProtectedRoute><PatientDashboard /></ProtectedRoute>} />
-      <Route path="/tai-khoan/lich-hen" element={<ProtectedRoute><MyAppointmentsPage /></ProtectedRoute>} />
-      <Route path="/tai-khoan/benh-an" element={<ProtectedRoute><MyRecordsPage /></ProtectedRoute>} />
-      <Route path="/tai-khoan/don-thuoc" element={<ProtectedRoute><MyPrescriptionsPage /></ProtectedRoute>} />
-      <Route path="/tai-khoan/ho-so" element={<ProtectedRoute><ProfilePage /></ProtectedRoute>} />
+        {/* Dành cho người bệnh */}
+        <Route path="/danh-cho-nguoi-benh/huong-dan/:slug" element={<PatientGuideSlugRouter />} />
+        <Route path="/danh-cho-nguoi-benh/huong-dan" element={<PatientGuideIndexPage />} />
+        <Route path="/danh-cho-nguoi-benh" element={<PatientHubPage />} />
 
-      {/* 404 */}
-      <Route path="*" element={<NotFoundPage />} />
+        {/* 404 */}
+        <Route path="*" element={<NotFoundPage />} />
+      </Route>
+
     </Routes>
   )
 }

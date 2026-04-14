@@ -8,14 +8,24 @@ const mockDoctors = [
 const doctorController = {
   async getAll(req, res) {
     try {
-      let data
+      let payload
       try {
-        const { department } = req.query
-        data = department ? await Doctor.getByDepartment(department) : await Doctor.getAll()
+        const { department, page, limit } = req.query
+        const wantsPaging = page !== undefined || limit !== undefined
+
+        if (wantsPaging) {
+          payload = await Doctor.getAllPaged(Number(page) || 1, Number(limit) || 12, department || null)
+        } else if (department) {
+          const rows = await Doctor.getByDepartment(department)
+          payload = { data: rows, total: rows.length, page: 1, limit: rows.length }
+        } else {
+          const rows = await Doctor.getAll()
+          payload = { data: rows, total: rows.length, page: 1, limit: rows.length }
+        }
       } catch {
-        data = mockDoctors
+        payload = { data: mockDoctors, total: mockDoctors.length, page: 1, limit: mockDoctors.length }
       }
-      res.json({ success: true, data })
+      res.json({ success: true, ...payload })
     } catch (error) {
       res.status(500).json({ success: false, message: error.message })
     }
@@ -38,17 +48,16 @@ const doctorController = {
 
   async search(req, res) {
     try {
-      const { q } = req.query
-      if (!q) return res.json({ success: true, data: [] })
-      let data
+      const { q, page, limit } = req.query
+      if (!q) return res.json({ success: true, data: [], total: 0, page: 1, limit: Number(limit) || 12 })
+      let payload
       try {
-        data = await Doctor.search(q)
+        payload = await Doctor.searchPaged(q, Number(page) || 1, Number(limit) || 12)
       } catch {
-        data = mockDoctors.filter(d =>
-          d.name.toLowerCase().includes(q.toLowerCase())
-        )
+        const filtered = mockDoctors.filter(d => d.name.toLowerCase().includes(q.toLowerCase()))
+        payload = { data: filtered, total: filtered.length, page: 1, limit: filtered.length }
       }
-      res.json({ success: true, data })
+      res.json({ success: true, ...payload })
     } catch (error) {
       res.status(500).json({ success: false, message: error.message })
     }

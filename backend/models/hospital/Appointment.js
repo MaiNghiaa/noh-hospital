@@ -2,11 +2,11 @@ const { pool } = require('../../config/db')
 
 const Appointment = {
   async create(data) {
-    const { full_name, phone, email, department, date, time, reason } = data
+    const { full_name, phone, email, department, doctor_id, date, time, reason } = data
     const [result] = await pool.query(
-      `INSERT INTO appointments (full_name, phone, email, department, appointment_date, appointment_time, reason)
-       VALUES (?, ?, ?, ?, ?, ?, ?)`,
-      [full_name, phone, email, department, date, time, reason]
+      `INSERT INTO appointments (full_name, phone, email, department, doctor_id, appointment_date, appointment_time, reason)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+      [full_name, phone, email, department, doctor_id || null, date, time, reason]
     )
     return { id: result.insertId, ...data }
   },

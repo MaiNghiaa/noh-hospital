@@ -96,8 +96,8 @@ export default function ProfilePage() {
   const inputClass = 'w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition';
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <div className="max-w-2xl mx-auto px-4 sm:px-6 py-8">
+    <div>
+      <div className="max-w-2xl mx-auto">
         <div className="flex items-center gap-3 mb-6">
           <Link to="/tai-khoan" className="p-2 hover:bg-gray-200 rounded-lg transition">
             <ChevronLeft className="w-5 h-5" />

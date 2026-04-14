@@ -6,13 +6,16 @@ import Modal from '../components/common/Modal'
 import { MOCK_DEPARTMENTS, HOSPITAL_INFO } from '../utils/constants'
 import appointmentService from '../services/appointmentService'
 import patientService from '../services/patientService'
+import departmentService from '../services/departmentService'
+import doctorService from '../services/doctorService'
 import { useAuth } from '../context/AuthContext'
 
 const initialForm = {
   fullName: '',
   phone: '',
   email: '',
-  department: '',
+  department_id: '',
+  doctor_id: '',
   date: '',
   time: '',
   reason: ''
@@ -24,6 +27,9 @@ export default function AppointmentPage() {
   const [errors, setErrors] = useState({})
   const [loading, setLoading] = useState(false)
   const [showSuccess, setShowSuccess] = useState(false)
+  const [departments, setDepartments] = useState([])
+  const [doctors, setDoctors] = useState([])
+  const [loadingDoctors, setLoadingDoctors] = useState(false)
 
   useEffect(() => {
     if (!isAuthenticated) return
@@ -41,12 +47,59 @@ export default function AppointmentPage() {
     if (errors[name]) setErrors((prev) => ({ ...prev, [name]: '' }))
   }
 
+  useEffect(() => {
+    let mounted = true
+    const fetchDepartments = async () => {
+      try {
+        const res = await departmentService.getAll()
+        // api wrapper returns response.data; backend returns { success: true, data: [...] }
+        const list = res?.data
+        mounted && setDepartments(Array.isArray(list) ? list : [])
+      } catch {
+        mounted && setDepartments(MOCK_DEPARTMENTS)
+      }
+    }
+    fetchDepartments()
+    return () => {
+      mounted = false
+    }
+  }, [])
+
+  useEffect(() => {
+    let mounted = true
+    const fetchDoctors = async () => {
+      if (!form.department_id) {
+        setDoctors([])
+        return
+      }
+      setLoadingDoctors(true)
+      try {
+        const res = await doctorService.getAll({ page: 1, limit: 100, department: form.department_id })
+        // backend returns { success, data, total, page, limit }
+        const list = res?.data
+        mounted && setDoctors(Array.isArray(list) ? list : [])
+      } catch {
+        mounted && setDoctors([])
+      } finally {
+        mounted && setLoadingDoctors(false)
+      }
+    }
+
+    // reset selected doctor when department changes
+    setForm((prev) => ({ ...prev, doctor_id: '' }))
+    fetchDoctors()
+    return () => {
+      mounted = false
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [form.department_id])
+
   const validate = () => {
     const errs = {}
     if (!form.fullName.trim()) errs.fullName = 'Vui lòng nhập họ tên'
     if (!form.phone.trim()) errs.phone = 'Vui lòng nhập số điện thoại'
     else if (!/^(0[3-9])\d{8}$/.test(form.phone)) errs.phone = 'Số điện thoại không hợp lệ'
-    if (!form.department) errs.department = 'Vui lòng chọn chuyên khoa'
+    if (!form.department_id) errs.department_id = 'Vui lòng chọn chuyên khoa'
     if (!form.date) errs.date = 'Vui lòng chọn ngày khám'
     return errs
   }
@@ -61,10 +114,13 @@ export default function AppointmentPage() {
 
     setLoading(true)
     try {
+      const selectedDept = departments.find((d) => String(d.id) === String(form.department_id))
+      const departmentName = selectedDept?.name || ''
+      const doctorId = form.doctor_id ? Number(form.doctor_id) : null
       if (isAuthenticated) {
         await patientService.createAppointment({
-          department: form.department,
-          doctor_id: null,
+          department: departmentName,
+          doctor_id: doctorId,
           appointment_date: form.date,
           appointment_time: form.time ? `${form.time}:00` : null,
           reason: form.reason
@@ -74,7 +130,8 @@ export default function AppointmentPage() {
           full_name: form.fullName,
           phone: form.phone,
           email: form.email,
-          department: form.department,
+          department: departmentName,
+          doctor_id: doctorId,
           date: form.date,
           time: form.time,
           reason: form.reason
@@ -89,7 +146,14 @@ export default function AppointmentPage() {
     }
   }
 
-  const deptOptions = MOCK_DEPARTMENTS.map((d) => ({ value: d.slug, label: d.name }))
+  const deptOptions = (departments?.length ? departments : MOCK_DEPARTMENTS).map((d) => ({
+    value: String(d.id),
+    label: d.name
+  }))
+  const doctorOptions = doctors.map((d) => ({
+    value: String(d.id),
+    label: `${d.title ? `${d.title} ` : ''}${d.name}`
+  }))
   const timeOptions = [
     { value: '07:30', label: '07:30' },
     { value: '08:00', label: '08:00' },
@@ -105,8 +169,8 @@ export default function AppointmentPage() {
   ]
 
   return (
-    <div className="min-h-screen bg-gray-50/50">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 py-10">
+    <div className="bg-gray-50/50">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6 lg:py-8">
         <div className="grid lg:grid-cols-3 gap-8">
           {/* Form */}
           <div className="lg:col-span-2">
@@ -154,13 +218,30 @@ export default function AppointmentPage() {
                   ) : null}
                   <Input.Select
                     label="Chuyên khoa"
-                    name="department"
-                    value={form.department}
+                    name="department_id"
+                    value={form.department_id}
                     onChange={handleChange}
                     options={deptOptions}
                     placeholder="Chọn chuyên khoa"
-                    error={errors.department}
+                    error={errors.department_id}
                     required
+                  />
+                  <Input.Select
+                    label="Bác sĩ (tùy chọn)"
+                    name="doctor_id"
+                    value={form.doctor_id}
+                    onChange={handleChange}
+                    options={doctorOptions}
+                    placeholder={
+                      !form.department_id
+                        ? 'Chọn chuyên khoa trước'
+                        : loadingDoctors
+                          ? 'Đang tải danh sách bác sĩ...'
+                          : doctors.length
+                            ? 'Chọn bác sĩ'
+                            : 'Chưa có bác sĩ cho chuyên khoa này'
+                    }
+                    disabled={!form.department_id || loadingDoctors || doctors.length === 0}
                   />
                   <Input
                     label="Ngày khám"

@@ -1,9 +1,9 @@
-import { useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { ChevronRight } from 'lucide-react'
 import Card from '../components/common/Card'
-import { MOCK_NEWS } from '../utils/constants'
 import { formatShortDate, cn } from '../utils/helpers'
+import newsService from '../services/newsService'
 
 const CATEGORIES = [
   { value: 'all', label: 'Tất cả' },
@@ -16,10 +16,46 @@ export default function NewsPage() {
   const [searchParams] = useSearchParams()
   const catParam = searchParams.get('cat') || 'all'
   const [activeCat, setActiveCat] = useState(catParam)
+  const [page, setPage] = useState(1)
+  const [limit] = useState(12)
+  const [items, setItems] = useState([])
+  const [total, setTotal] = useState(0)
+  const [loading, setLoading] = useState(true)
 
-  const filtered = activeCat === 'all'
-    ? MOCK_NEWS
-    : MOCK_NEWS.filter((n) => n.category === activeCat)
+  useEffect(() => {
+    setPage(1)
+  }, [activeCat])
+
+  useEffect(() => {
+    let cancelled = false
+    async function fetch() {
+      setLoading(true)
+      try {
+        const res = activeCat === 'all'
+          ? await newsService.getAll(page, limit)
+          : await newsService.getByCategory(activeCat, page, limit)
+        if (cancelled) return
+        setItems(res.data || [])
+        setTotal(res.total || 0)
+      } catch {
+        if (cancelled) return
+        setItems([])
+        setTotal(0)
+      } finally {
+        if (!cancelled) setLoading(false)
+      }
+    }
+    fetch()
+    return () => { cancelled = true }
+  }, [activeCat, page, limit])
+
+  const pageCount = useMemo(() => Math.max(1, Math.ceil((total || 0) / limit)), [total, limit])
+  const safePage = Math.min(page, pageCount)
+
+  const categoryLabel = useMemo(() => {
+    const found = CATEGORIES.find((c) => c.value === activeCat)
+    return found?.label || activeCat
+  }, [activeCat])
 
   return (
     <div className="min-h-screen w-full max-w-[100vw] overflow-x-hidden bg-gray-50/50">
@@ -42,41 +78,69 @@ export default function NewsPage() {
           ))}
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-6">
-          {filtered.map((news) => {
-            const { day, month, year } = formatShortDate(news.date)
-            return (
-              <Link key={news.id} to={`/tin-tuc/${news.slug}`} className="group">
-                <Card padding={false} className="h-full">
-                  <div className="relative aspect-[16/10] overflow-hidden">
-                    <img
-                      src={news.image}
-                      alt={news.title}
-                      className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
-                      loading="lazy"
-                    />
-                    <div className="absolute top-3 left-3 bg-white rounded-lg px-2.5 py-1.5 shadow-md text-center">
-                      <div className="text-lg font-bold text-hospital-blue leading-none">{day}</div>
-                      <div className="text-xs text-gray-500">T{month}/{year}</div>
+        {loading ? (
+          <div className="py-20 text-center text-gray-400">Đang tải...</div>
+        ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-6">
+            {items.map((news) => {
+              const { day, month, year } = formatShortDate(news.published_at || news.created_at)
+              return (
+                <Link key={news.id} to={`/tin-tuc/${news.slug}`} className="group">
+                  <Card padding={false} className="h-full">
+                    <div className="relative aspect-[16/10] overflow-hidden">
+                      <img
+                        src={news.image}
+                        alt={news.title}
+                        className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+                        loading="lazy"
+                      />
+                      <div className="absolute top-3 left-3 bg-white rounded-lg px-2.5 py-1.5 shadow-md text-center">
+                        <div className="text-lg font-bold text-hospital-blue leading-none">{day}</div>
+                        <div className="text-xs text-gray-500">T{month}/{year}</div>
+                      </div>
                     </div>
-                  </div>
-                  <div className="p-5">
-                    <span className="text-xs text-hospital-teal font-semibold">{news.categoryLabel}</span>
-                    <h3 className="font-display text-base font-bold text-hospital-dark mt-2 leading-snug line-clamp-2 group-hover:text-hospital-teal transition-colors">
-                      {news.title}
-                    </h3>
-                    <p className="text-gray-500 text-sm mt-2 line-clamp-2">{news.excerpt}</p>
-                    <span className="inline-flex items-center gap-1 text-hospital-teal text-sm font-semibold mt-3 group-hover:gap-2 transition-all">
-                      Đọc tiếp <ChevronRight size={14} />
-                    </span>
-                  </div>
-                </Card>
-              </Link>
-            )
-          })}
-        </div>
+                    <div className="p-5">
+                      <span className="text-xs text-hospital-teal font-semibold">{categoryLabel}</span>
+                      <h3 className="font-display text-base font-bold text-hospital-dark mt-2 leading-snug line-clamp-2 group-hover:text-hospital-teal transition-colors">
+                        {news.title}
+                      </h3>
+                      <p className="text-gray-500 text-sm mt-2 line-clamp-2">{news.excerpt}</p>
+                      <span className="inline-flex items-center gap-1 text-hospital-teal text-sm font-semibold mt-3 group-hover:gap-2 transition-all">
+                        Đọc tiếp <ChevronRight size={14} />
+                      </span>
+                    </div>
+                  </Card>
+                </Link>
+              )
+            })}
+          </div>
+        )}
 
-        {filtered.length === 0 && (
+        {!loading && pageCount > 1 && (
+          <div className="mt-10 flex items-center justify-center gap-2">
+            <button
+              type="button"
+              onClick={() => setPage((p) => Math.max(1, p - 1))}
+              disabled={safePage <= 1}
+              className="px-3 py-2 rounded-lg border border-gray-200 bg-white text-sm font-semibold text-gray-600 disabled:opacity-50"
+            >
+              Trước
+            </button>
+            <span className="text-sm text-gray-500 px-2">
+              Trang <strong>{safePage}</strong> / {pageCount}
+            </span>
+            <button
+              type="button"
+              onClick={() => setPage((p) => Math.min(pageCount, p + 1))}
+              disabled={safePage >= pageCount}
+              className="px-3 py-2 rounded-lg border border-gray-200 bg-white text-sm font-semibold text-gray-600 disabled:opacity-50"
+            >
+              Sau
+            </button>
+          </div>
+        )}
+
+        {!loading && items.length === 0 && (
           <div className="text-center py-20 text-gray-400">
             <p className="text-lg">Không có tin tức nào.</p>
           </div>

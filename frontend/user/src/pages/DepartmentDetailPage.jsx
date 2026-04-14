@@ -1,11 +1,54 @@
+import { useEffect, useState } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import { ChevronRight } from 'lucide-react'
 import Button from '../components/common/Button'
-import { MOCK_DEPARTMENTS, MOCK_DOCTORS } from '../utils/constants'
+import departmentService from '../services/departmentService'
+import doctorService from '../services/doctorService'
 
 export default function DepartmentDetailPage() {
   const { slug } = useParams()
-  const department = MOCK_DEPARTMENTS.find((d) => d.slug === slug)
+  const [department, setDepartment] = useState(null)
+  const [relatedDoctors, setRelatedDoctors] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [otherDepartments, setOtherDepartments] = useState([])
+
+  useEffect(() => {
+    let cancelled = false
+    async function fetch() {
+      setLoading(true)
+      try {
+        const deptRes = await departmentService.getBySlug(slug)
+        if (cancelled) return
+        const dept = deptRes.data
+        setDepartment(dept)
+
+        const [docRes, allDeptsRes] = await Promise.all([
+          dept?.id ? doctorService.getAll({ page: 1, limit: 8, department: dept.id }) : Promise.resolve({ data: [], total: 0 }),
+          departmentService.getAll(),
+        ])
+        if (cancelled) return
+        setRelatedDoctors(docRes.data || [])
+        setOtherDepartments((allDeptsRes.data || []).filter((d) => d.slug !== slug).slice(0, 5))
+      } catch {
+        if (cancelled) return
+        setDepartment(null)
+        setRelatedDoctors([])
+        setOtherDepartments([])
+      } finally {
+        if (!cancelled) setLoading(false)
+      }
+    }
+    fetch()
+    return () => { cancelled = true }
+  }, [slug])
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-gray-400">Đang tải...</div>
+      </div>
+    )
+  }
 
   if (!department) {
     return (
@@ -19,9 +62,6 @@ export default function DepartmentDetailPage() {
       </div>
     )
   }
-
-  // Lọc bác sĩ thuộc khoa
-  const relatedDoctors = MOCK_DOCTORS.filter((d) => d.departmentId === department.id)
 
   return (
     <div className="min-h-screen bg-gray-50/50">
@@ -68,7 +108,7 @@ export default function DepartmentDetailPage() {
                         />
                         <div>
                           <h4 className="font-bold text-sm text-hospital-dark group-hover:text-hospital-teal transition-colors">
-                            {doctor.name}
+                            {doctor.title ? `${doctor.title} ` : ''}{doctor.name}
                           </h4>
                           <p className="text-xs text-gray-500 mt-0.5">{doctor.specialty}</p>
                           <p className="text-xs text-accent-600 font-medium mt-1">{doctor.experience}</p>
@@ -98,7 +138,7 @@ export default function DepartmentDetailPage() {
             <div className="bg-white rounded-2xl shadow-md p-6">
               <h3 className="font-display text-lg font-bold text-hospital-dark mb-4">Chuyên khoa khác</h3>
               <div className="space-y-2">
-                {MOCK_DEPARTMENTS.filter((d) => d.id !== department.id).slice(0, 5).map((d) => (
+                {otherDepartments.map((d) => (
                   <Link
                     key={d.id}
                     to={`/chuyen-khoa/${d.slug}`}

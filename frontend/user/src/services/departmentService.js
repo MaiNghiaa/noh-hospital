@@ -3,6 +3,7 @@ import api from './api'
 const departmentService = {
   getAll: () => api.get('/departments'),
   getById: (id) => api.get(`/departments/${id}`),
+  getBySlug: (slug) => api.get(`/departments/slug/${slug}`),
   getByType: (type) => api.get(`/departments?type=${type}`)
 }
 

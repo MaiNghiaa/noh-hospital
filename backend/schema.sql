@@ -59,7 +59,9 @@ CREATE TABLE IF NOT EXISTS doctors (
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   FOREIGN KEY (department_id) REFERENCES departments(id) ON DELETE SET NULL,
   INDEX idx_doctor_department (department_id),
-  INDEX idx_doctor_slug (slug)
+  INDEX idx_doctor_slug (slug),
+  INDEX idx_doctor_email (email),
+  INDEX idx_doctor_phone (phone)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- ─── 1.3 Doctor Schedules (Lịch khám bác sĩ) ───
@@ -228,6 +230,7 @@ CREATE TABLE IF NOT EXISTS medicines (
   unit VARCHAR(50) NOT NULL,
   category VARCHAR(100) NULL,
   description TEXT NULL,
+  stock_quantity INT NOT NULL DEFAULT 0,
   is_active TINYINT(1) DEFAULT 1,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP

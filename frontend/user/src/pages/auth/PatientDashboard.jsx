@@ -1,7 +1,7 @@
 // frontend/user/src/pages/auth/PatientDashboard.jsx
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { CalendarDays, FileText, Pill, Clock, ChevronRight, User, LogOut, Activity } from 'lucide-react';
+import { CalendarDays, FileText, Pill, Clock, ChevronRight, User, Activity } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import patientService from '../../services/patientService';
 
@@ -22,7 +22,7 @@ const statusLabels = {
 };
 
 export default function PatientDashboard() {
-  const { user, logout } = useAuth();
+  const { user } = useAuth();
   const [dashboard, setDashboard] = useState(null);
   const [loading, setLoading] = useState(true);
 
@@ -42,7 +42,7 @@ export default function PatientDashboard() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
+      <div className="min-h-[60vh] flex items-center justify-center">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
       </div>
     );
@@ -55,22 +55,14 @@ export default function PatientDashboard() {
   ];
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <div className="max-w-6xl mx-auto px-4 sm:px-6 py-8">
-        {/* Header */}
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900">Xin chào, {user?.full_name}!</h1>
-            <p className="text-gray-500 mt-1">Quản lý lịch khám và hồ sơ sức khỏe của bạn</p>
-          </div>
-          <button
-            onClick={logout}
-            className="flex items-center gap-2 px-4 py-2 text-red-600 hover:bg-red-50 rounded-lg transition text-sm font-medium"
-          >
-            <LogOut className="w-4 h-4" />
-            Đăng xuất
-          </button>
+    <div>
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900">Xin chào, {user?.full_name}!</h1>
+          <p className="text-gray-500 mt-1">Quản lý lịch khám và hồ sơ sức khỏe của bạn</p>
         </div>
+      </div>
 
         {/* Stats */}
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
@@ -169,7 +161,6 @@ export default function PatientDashboard() {
             <ChevronRight className="w-5 h-5 text-gray-400 group-hover:text-blue-500 transition" />
           </Link>
         </div>
-      </div>
     </div>
   );
 }

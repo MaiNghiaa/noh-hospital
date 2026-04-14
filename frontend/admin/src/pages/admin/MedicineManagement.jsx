@@ -1,6 +1,6 @@
 // frontend/src/pages/admin/MedicineManagement.jsx
 import { useState, useEffect, useCallback } from 'react';
-import { Plus, Edit } from 'lucide-react';
+import { Plus, Edit, PackagePlus } from 'lucide-react';
 import api from '../../utils/api';
 import { DataTable, SearchInput, FormModal } from '../../components/admin';
 
@@ -10,8 +10,10 @@ const MedicineManagement = () => {
   const [search, setSearch] = useState('');
   const [showForm, setShowForm] = useState(false);
   const [editing, setEditing] = useState(null);
+  const [stockInTarget, setStockInTarget] = useState(null);
+  const [stockInQty, setStockInQty] = useState(0);
   const [formLoading, setFormLoading] = useState(false);
-  const [form, setForm] = useState({ name: '', active_ingredient: '', unit: 'viên', category: '', description: '' });
+  const [form, setForm] = useState({ name: '', active_ingredient: '', unit: 'viên', category: '', description: '', stock_quantity: 0 });
 
   const fetchData = useCallback(async () => {
     setLoading(true);
@@ -24,8 +26,8 @@ const MedicineManagement = () => {
 
   useEffect(() => { fetchData(); }, [fetchData]);
 
-  const openAdd = () => { setEditing(null); setForm({ name: '', active_ingredient: '', unit: 'viên', category: '', description: '' }); setShowForm(true); };
-  const openEdit = (m) => { setEditing(m); setForm({ name: m.name, active_ingredient: m.active_ingredient || '', unit: m.unit, category: m.category || '', description: m.description || '' }); setShowForm(true); };
+  const openAdd = () => { setEditing(null); setForm({ name: '', active_ingredient: '', unit: 'viên', category: '', description: '', stock_quantity: 0 }); setShowForm(true); };
+  const openEdit = (m) => { setEditing(m); setForm({ name: m.name, active_ingredient: m.active_ingredient || '', unit: m.unit, category: m.category || '', description: m.description || '', stock_quantity: m.stock_quantity ?? 0 }); setShowForm(true); };
 
   const handleSubmit = async () => {
     setFormLoading(true);
@@ -37,18 +39,45 @@ const MedicineManagement = () => {
     finally { setFormLoading(false); }
   };
 
+  const handleStockIn = async () => {
+    if (!stockInTarget) return;
+    setFormLoading(true);
+    try {
+      await api.patch(`/admin/medicines/${stockInTarget.id}/stock-in`, { quantity: Number(stockInQty) || 0 });
+      setStockInTarget(null);
+      setStockInQty(0);
+      fetchData();
+    } catch (err) {
+      alert(err.response?.data?.message || 'Có lỗi');
+    } finally {
+      setFormLoading(false);
+    }
+  };
+
   const columns = [
     { key: 'name', title: 'Tên thuốc', render: (val) => <span className="font-medium text-gray-800">{val}</span> },
     { key: 'active_ingredient', title: 'Hoạt chất' },
     { key: 'unit', title: 'Đơn vị' },
     { key: 'category', title: 'Phân loại' },
+    { key: 'stock_quantity', title: 'Tồn kho', render: (val) => <span className="font-medium text-gray-800">{val ?? 0}</span> },
     { key: 'is_active', title: 'Trạng thái', render: (val) => (
       <span className={`inline-flex px-2.5 py-0.5 rounded-full text-xs font-medium ${val ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
         {val ? 'Hoạt động' : 'Ngừng'}
       </span>
     )},
     { key: 'actions', title: 'Thao tác', render: (_, row) => (
-      <button onClick={() => openEdit(row)} className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg"><Edit size={16} /></button>
+      <div className="flex items-center gap-1">
+        <button onClick={() => openEdit(row)} className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg" title="Chỉnh sửa">
+          <Edit size={16} />
+        </button>
+        <button
+          onClick={() => { setStockInTarget(row); setStockInQty(0); }}
+          className="p-2 text-green-700 hover:bg-green-50 rounded-lg"
+          title="Nhập kho"
+        >
+          <PackagePlus size={16} />
+        </button>
+      </div>
     )},
   ];
 
@@ -92,6 +121,16 @@ const MedicineManagement = () => {
             </div>
           </div>
           <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Tồn kho</label>
+            <input
+              type="number"
+              min={0}
+              value={form.stock_quantity}
+              onChange={(e) => setForm({ ...form, stock_quantity: e.target.value })}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+            />
+          </div>
+          <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Phân loại</label>
             <input type="text" value={form.category} onChange={(e) => setForm({ ...form, category: e.target.value })} placeholder="VD: Kháng sinh, Giảm đau..."
               className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none" />
@@ -101,6 +140,28 @@ const MedicineManagement = () => {
             <textarea value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} rows={2}
               className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none" />
           </div>
+        </div>
+      </FormModal>
+
+      <FormModal
+        isOpen={!!stockInTarget}
+        title={`Nhập kho: ${stockInTarget?.name || ''}`}
+        onClose={() => setStockInTarget(null)}
+        onSubmit={handleStockIn}
+        loading={formLoading}
+      >
+        <div className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Số lượng nhập</label>
+            <input
+              type="number"
+              min={1}
+              value={stockInQty}
+              onChange={(e) => setStockInQty(e.target.value)}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+            />
+          </div>
+          <p className="text-xs text-gray-500">Hệ thống sẽ cộng thêm vào tồn kho hiện tại.</p>
         </div>
       </FormModal>
     </div>

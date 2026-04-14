@@ -4,7 +4,7 @@ const appointmentController = {
   // POST /api/appointments
   async create(req, res) {
     try {
-      const { full_name, phone, email, department, date, time, reason } = req.body
+      const { full_name, phone, email, department, doctor_id, date, time, reason } = req.body
 
       // Validate
       if (!full_name || !phone || !department || !date) {
@@ -16,10 +16,10 @@ const appointmentController = {
 
       let data
       try {
-        data = await Appointment.create({ full_name, phone, email, department, date, time, reason })
+        data = await Appointment.create({ full_name, phone, email, department, doctor_id: doctor_id ? Number(doctor_id) : null, date, time, reason })
       } catch {
         // Fallback: return success mock
-        data = { id: Date.now(), full_name, phone, email, department, date, time, reason }
+        data = { id: Date.now(), full_name, phone, email, department, doctor_id: doctor_id ? Number(doctor_id) : null, date, time, reason }
       }
 
       res.status(201).json({
