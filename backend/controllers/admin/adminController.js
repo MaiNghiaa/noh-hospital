@@ -190,9 +190,9 @@ const adminController = {
       }
 
       // Count total
-      const countQuery = query.replace(/SELECT .* FROM/, 'SELECT COUNT(*) as total FROM');
+      const countQuery = query.replace(/SELECT[\s\S]*?FROM/, 'SELECT COUNT(*) as total FROM');
       const [countResult] = await db.execute(countQuery, params);
-      const total = countResult[0].total;
+      const total = Number(countResult?.[0]?.total) || 0;
 
       query += ` ORDER BY a.created_at DESC LIMIT ${limitInt} OFFSET ${offsetInt}`;
 
@@ -248,7 +248,7 @@ const adminController = {
       const { notes, doctor_id } = req.body;
 
       const [rows] = await db.execute(
-        'SELECT id, doctor_id, appointment_date, appointment_time FROM appointments WHERE id = ?',
+        'SELECT id, status, doctor_id, appointment_date, appointment_time FROM appointments WHERE id = ?',
         [id]
       );
       if (rows.length === 0) {
@@ -256,7 +256,26 @@ const adminController = {
       }
 
       const appt = rows[0];
-      const pickedDoctorId = doctor_id ? Number(doctor_id) : appt.doctor_id;
+      if (!['pending', 'confirmed'].includes(appt.status)) {
+        return res.status(400).json({ message: 'Không thể xác nhận lịch hẹn ở trạng thái hiện tại' });
+      }
+
+      const isDoctorUser = req.user?.role === 'doctor';
+      const myDoctorId = req.user?.doctor_id ? Number(req.user.doctor_id) : null;
+
+      let pickedDoctorId = doctor_id ? Number(doctor_id) : appt.doctor_id;
+      if (isDoctorUser) {
+        if (!myDoctorId) return res.status(403).json({ message: 'Tài khoản không liên kết với bác sĩ nào' });
+
+        // Doctor can only confirm appointments assigned to them.
+        // If appointment has no doctor yet, allow doctor to "take" it.
+        if (appt.doctor_id && Number(appt.doctor_id) !== myDoctorId) {
+          return res.status(403).json({ message: 'Bạn không thể xác nhận lịch hẹn không thuộc bác sĩ của bạn' });
+        }
+
+        pickedDoctorId = myDoctorId;
+      }
+
       if (pickedDoctorId) {
         const [doctorRows] = await db.execute('SELECT id, is_active FROM doctors WHERE id = ? LIMIT 1', [pickedDoctorId]);
         if (doctorRows.length === 0) {
@@ -264,14 +283,6 @@ const adminController = {
         }
         if (!doctorRows[0].is_active) {
           return res.status(400).json({ message: 'Bác sĩ được chọn đang ngưng hoạt động' });
-        }
-
-        const [inProgress] = await db.execute(
-          `SELECT id FROM appointments WHERE doctor_id = ? AND status = 'in_progress' AND id <> ? LIMIT 1`,
-          [pickedDoctorId, appt.id]
-        );
-        if (inProgress.length > 0) {
-          return res.status(409).json({ message: 'Bác sĩ đang khám (in progress). Vui lòng chọn bác sĩ khác.' });
         }
 
         const [conflicts] = await db.execute(
@@ -357,15 +368,6 @@ const adminController = {
       if (doctorRows.length === 0) return res.status(400).json({ message: 'Bác sĩ được chọn không tồn tại' });
       if (!doctorRows[0].is_active) return res.status(400).json({ message: 'Bác sĩ được chọn đang ngưng hoạt động' });
 
-      // If doctor currently has an in-progress appointment, don't assign more
-      const [inProgress] = await db.execute(
-        `SELECT id FROM appointments WHERE doctor_id = ? AND status = 'in_progress' LIMIT 1`,
-        [pickedDoctorId]
-      );
-      if (inProgress.length > 0) {
-        return res.status(409).json({ message: 'Bác sĩ đang khám (in progress). Vui lòng chọn bác sĩ khác.' });
-      }
-
       const [conflicts] = await db.execute(
         `SELECT id
          FROM appointments
@@ -423,11 +425,6 @@ const adminController = {
            AND NOT EXISTS (
              SELECT 1 FROM appointments a
              WHERE a.doctor_id = d.id
-               AND a.status = 'in_progress'
-           )
-           AND NOT EXISTS (
-             SELECT 1 FROM appointments a
-             WHERE a.doctor_id = d.id
                AND a.appointment_date = ?
                ${timeSql}
                AND a.status IN ('confirmed', 'in_progress')
@@ -439,6 +436,70 @@ const adminController = {
       res.json({ data: rows });
     } catch (error) {
       console.error('Get available doctors error:', error);
+      res.status(500).json({ message: 'Lỗi server' });
+    }
+  },
+
+  // PATCH /api/admin/appointments/:id/reschedule
+  async rescheduleAppointment(req, res) {
+    try {
+      const { id } = req.params;
+      const { appointment_date, appointment_time, doctor_id } = req.body;
+
+      if (!appointment_date) {
+        return res.status(400).json({ message: 'Vui lòng chọn ngày khám' });
+      }
+
+      const pickedDoctorId = doctor_id ? Number(doctor_id) : null;
+
+      const [rows] = await db.execute(
+        `SELECT id, status, doctor_id, appointment_date, appointment_time
+         FROM appointments
+         WHERE id = ?
+         LIMIT 1`,
+        [id]
+      );
+      if (rows.length === 0) return res.status(404).json({ message: 'Không tìm thấy lịch hẹn' });
+
+      const appt = rows[0];
+      if (!['pending', 'confirmed'].includes(appt.status)) {
+        return res.status(400).json({ message: 'Không thể đổi lịch ở trạng thái hiện tại' });
+      }
+
+      if (pickedDoctorId) {
+        const [doctorRows] = await db.execute('SELECT id, is_active FROM doctors WHERE id = ? LIMIT 1', [pickedDoctorId]);
+        if (doctorRows.length === 0) return res.status(400).json({ message: 'Bác sĩ được chọn không tồn tại' });
+        if (!doctorRows[0].is_active) return res.status(400).json({ message: 'Bác sĩ được chọn đang ngưng hoạt động' });
+
+        const [conflicts] = await db.execute(
+          `SELECT id
+           FROM appointments
+           WHERE doctor_id = ?
+             AND appointment_date = ?
+             AND (appointment_time <=> ?)
+             AND status IN ('confirmed', 'in_progress')
+             AND id <> ?
+           LIMIT 1`,
+          [pickedDoctorId, appointment_date, appointment_time || null, id]
+        );
+        if (conflicts.length > 0) {
+          return res.status(400).json({ message: 'Bác sĩ đã có lịch ở khung giờ này. Vui lòng chọn giờ/bác sĩ khác.' });
+        }
+      }
+
+      await db.execute(
+        `UPDATE appointments
+         SET appointment_date = ?,
+             appointment_time = ?,
+             doctor_id = COALESCE(?, doctor_id),
+             updated_at = NOW()
+         WHERE id = ?`,
+        [appointment_date, appointment_time || null, pickedDoctorId || null, id]
+      );
+
+      res.json({ message: 'Đã đổi lịch hẹn' });
+    } catch (error) {
+      console.error('Reschedule appointment error:', error);
       res.status(500).json({ message: 'Lỗi server' });
     }
   },
@@ -490,9 +551,9 @@ const adminController = {
         params.push(`%${search}%`, `%${search}%`, `%${search}%`);
       }
 
-      const countQuery = query.replace(/SELECT .* FROM/, 'SELECT COUNT(*) as total FROM');
+      const countQuery = query.replace(/SELECT[\s\S]*?FROM/, 'SELECT COUNT(*) as total FROM');
       const [countResult] = await db.execute(countQuery, params);
-      const total = countResult[0].total;
+      const total = Number(countResult?.[0]?.total) || 0;
 
       // NOTE: Some MySQL/MariaDB setups are picky with LIMIT/OFFSET placeholders.
       // We inject validated integers directly to avoid ER_WRONG_ARGUMENTS.
@@ -746,9 +807,9 @@ const adminController = {
         params.push(`%${search}%`, `%${search}%`);
       }
 
-      const countQuery = query.replace(/SELECT .* FROM/, 'SELECT COUNT(*) as total FROM');
+      const countQuery = query.replace(/SELECT[\s\S]*?FROM/, 'SELECT COUNT(*) as total FROM');
       const [countResult] = await db.execute(countQuery, params);
-      const total = countResult[0].total;
+      const total = Number(countResult?.[0]?.total) || 0;
 
       query += ` ORDER BY created_at DESC LIMIT ${limitInt} OFFSET ${offsetInt}`;
 

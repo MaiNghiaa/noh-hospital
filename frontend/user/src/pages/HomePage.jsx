@@ -7,6 +7,7 @@ import Button from '../components/common/Button'
 import HomeLegalDocumentsSection from '../components/home/HomeLegalDocumentsSection'
 import HomeTrainingLineSection from '../components/home/HomeTrainingLineSection'
 import { QUICK_LINKS, MOCK_DEPARTMENTS, MOCK_DOCTORS, MOCK_NEWS, HOSPITAL_INFO } from '../utils/constants'
+import { newsCategoryLabel } from '../utils/newsDisplay'
 import departmentService from '../services/departmentService'
 import doctorService from '../services/doctorService'
 import newsService from '../services/newsService'
@@ -289,18 +290,18 @@ export default function HomePage() {
 
       {/* ════════════════ SPECIALTY ACTIVITIES + ANNOUNCEMENTS ════════════════ */}
       <section className="py-10 lg:py-14 bg-white">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6">
+        <div className="w-full lg:max-w-7xl lg:mx-auto px-4 sm:px-6">
           <div className="grid lg:grid-cols-2 gap-10 items-start">
             {/* Left: Specialty activities */}
-            <div className="grid grid-cols-[140px_1fr] gap-6 items-start">
+            <div className="grid grid-cols-1 sm:grid-cols-[140px_1fr] gap-6 items-start">
               <div className="text-center">
                 <div className="text-[18px] font-semibold text-gray-900">Hoạt động chuyên khoa</div>
               </div>
 
-              <div className="flex items-start gap-6">
+              <div className="flex flex-col sm:flex-row items-start gap-6">
                 <div className="shrink-0 w-[110px] h-[110px] rounded-full overflow-hidden border border-gray-200 bg-gray-50">
                   <img
-                    src={MOCK_NEWS?.[0]?.image}
+                    src={homeNews?.[0]?.image || MOCK_NEWS?.[0]?.image}
                     alt=""
                     className="w-full h-full object-cover"
                     loading="lazy"
@@ -309,15 +310,18 @@ export default function HomePage() {
 
                 <div className="min-w-0">
                   <div className="text-[14px] font-bold text-gray-900 uppercase leading-snug">
-                    {MOCK_NEWS?.[0]?.title ?? 'VIÊM TAI GIỮA MẠN TÍNH: CẢNH BÁO BIẾN CHỨNG NGUY HIỂM VÀ CÁCH'}
+                    {homeNews?.[0]?.title ??
+                      MOCK_NEWS?.[0]?.title ??
+                      'VIÊM TAI GIỮA MẠN TÍNH: CẢNH BÁO BIẾN CHỨNG NGUY HIỂM VÀ CÁCH'}
                   </div>
                   <div className="mt-2 text-[12px] text-gray-600 leading-relaxed line-clamp-3">
-                    {MOCK_NEWS?.[0]?.excerpt ??
+                    {homeNews?.[0]?.excerpt ??
+                      MOCK_NEWS?.[0]?.excerpt ??
                       'Viêm tai giữa mạn tính là tình trạng viêm nhiễm kéo dài ở tai giữa...'}
                   </div>
                   <div className="mt-2">
                     <Link
-                      to={MOCK_NEWS?.[0]?.slug ? `/tin-tuc/${MOCK_NEWS[0].slug}` : '/tin-tuc'}
+                      to={`/tin-tuc/${homeNews?.[0]?.slug ?? MOCK_NEWS?.[0]?.slug ?? 'tin-tuc'}`}
                       className="inline-flex items-center gap-2 text-[12px] text-gray-800 hover:text-[#0b66c3] font-medium"
                     >
                       Xem chi tiết <span aria-hidden>→</span>
@@ -328,7 +332,7 @@ export default function HomePage() {
             </div>
 
             {/* Right: Announcements */}
-            <div className="grid grid-cols-[120px_1fr] gap-6 items-start">
+            <div className="grid grid-cols-1 sm:grid-cols-[120px_1fr] gap-6 items-start">
               <div className="text-center">
                 <div className="text-[18px] font-semibold text-gray-900">Thông báo</div>
                 <Link
@@ -340,8 +344,8 @@ export default function HomePage() {
               </div>
 
               <div className="space-y-6">
-                {MOCK_NEWS.slice(1, 3).map((n) => (
-                  <Link key={n.id} to={`/tin-tuc/${n.slug}`} className="group block">
+                {(homeNews.length >= 3 ? homeNews : MOCK_NEWS).slice(1, 3).map((n) => (
+                  <Link key={n.id ?? n.slug} to={`/tin-tuc/${n.slug}`} className="group block">
                     <div className="text-[13px] font-semibold text-gray-900 leading-snug line-clamp-2 group-hover:text-[#0b66c3] transition-colors">
                       {n.title}
                     </div>
@@ -374,7 +378,7 @@ export default function HomePage() {
           <div className="absolute inset-0 bg-[#1f4d8e]/65" />
         </div>
 
-        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 py-12 lg:py-16">
+        <div className="relative w-full lg:max-w-7xl lg:mx-auto px-4 sm:px-6 py-12 lg:py-16">
           <div className="text-white flex flex-col items-center text-center font-sans">
             <div className="text-[22px] sm:text-[26px] lg:text-[30px] font-bold tracking-tight">
               Bạn hỏi - Chúng tôi trả lời
@@ -428,7 +432,7 @@ export default function HomePage() {
                       <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent" />
                       <div className="absolute bottom-0 left-0 right-0 p-6">
                         <span className="inline-block px-3 py-1 bg-hospital-teal text-white text-xs font-bold rounded-lg mb-3">
-                          {homeNews[0].category}
+                          {newsCategoryLabel(homeNews[0].category)}
                         </span>
                         <h3 className="font-display text-xl lg:text-2xl font-bold text-white leading-snug">
                           {homeNews[0].title}
@@ -455,7 +459,7 @@ export default function HomePage() {
                         <span className="text-xs text-gray-500">T{month}</span>
                       </div>
                       <div className="flex-1 min-w-0">
-                        <span className="text-xs text-hospital-teal font-semibold">{news.category}</span>
+                        <span className="text-xs text-hospital-teal font-semibold">{newsCategoryLabel(news.category)}</span>
                         <h4 className="text-sm font-bold text-hospital-dark leading-snug mt-1 line-clamp-2 group-hover:text-hospital-teal transition-colors">
                           {news.title}
                         </h4>
@@ -471,7 +475,7 @@ export default function HomePage() {
 
       {/* ════════════════ DOCTORS ════════════════ */}
       <section className="py-16 lg:py-20">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6">
+        <div className="w-full lg:max-w-7xl lg:mx-auto px-4 sm:px-6">
           <SectionTitle
             title="Đội ngũ chuyên gia"
             subtitle="Đội ngũ y bác sĩ đầu ngành với trình độ chuyên môn cao và kinh nghiệm dày dặn"
@@ -524,7 +528,7 @@ export default function HomePage() {
         <div className="absolute inset-0 gradient-primary opacity-95" />
         <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjAiIGhlaWdodD0iNjAiIHZpZXdCb3g9IjAgMCA2MCA2MCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48ZyBmaWxsPSJub25lIiBmaWxsLXJ1bGU9ImV2ZW5vZGQiPjxnIGZpbGw9IiNmZmYiIGZpbGwtb3BhY2l0eT0iMC4wNSI+PHBhdGggZD0iTTM2IDM0djItSDI0di0yaDEyem0wLTMwVjBoLTEydjRoMTJ6TTI0IDI0aDEydi0ySDI0djJ6Ii8+PC9nPjwvZz48L3N2Zz4=')] opacity-20" />
 
-        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 text-center text-white">
+        <div className="relative w-full lg:max-w-7xl lg:mx-auto px-4 sm:px-6 text-center text-white">
           <h2 className="font-display text-3xl lg:text-4xl font-bold">
             Đặt lịch khám ngay hôm nay
           </h2>

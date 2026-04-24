@@ -1,5 +1,6 @@
 // backend/controllers/doctorController.js
 const db = require('../../config/db').db;
+const emailService = require('../../utils/emailService');
 
 const doctorController = {
   // GET /api/doctor/appointments
@@ -102,7 +103,7 @@ const doctorController = {
 
       // Require at least one medical record for this appointment
       const [records] = await db.execute(
-        `SELECT id FROM medical_records WHERE appointment_id = ? AND doctor_id = ? LIMIT 1`,
+        `SELECT * FROM medical_records WHERE appointment_id = ? AND doctor_id = ? LIMIT 1`,
         [id, doctorId]
       );
       if (records.length === 0) {
@@ -111,6 +112,41 @@ const doctorController = {
 
       await db.execute("UPDATE appointments SET status = 'completed' WHERE id = ? AND doctor_id = ?", [id, doctorId]);
       res.json({ message: 'Đã chuyển lịch sang trạng thái hoàn thành' });
+
+      // ASYNC EMAIL SENDING LOGIC
+      try {
+        const [appts] = await db.execute(
+          `SELECT a.email, a.full_name, a.appointment_date, a.department as department_name, d.name as doctor_name
+           FROM appointments a
+           LEFT JOIN doctors d ON a.doctor_id = d.id
+           WHERE a.id = ?`,
+          [id]
+        );
+
+        if (appts.length > 0 && appts[0].email) {
+          const appointmentData = appts[0];
+          const recordData = records[0];
+
+          // Fetch prescriptions
+          const [prescriptions] = await db.execute(
+            `SELECT p.*, m.name as medicine_name, m.unit as medicine_unit, m.active_ingredient 
+             FROM prescriptions p 
+             JOIN medicines m ON p.medicine_id = m.id 
+             WHERE p.record_id = ?`,
+            [recordData.id]
+          );
+
+          // Fire and forget email sending
+          emailService.sendMedicalRecordEmail(
+            appointmentData.email,
+            appointmentData,
+            recordData,
+            prescriptions
+          ).catch(console.error);
+        }
+      } catch (err) {
+        console.error('Error in async email sending logic:', err);
+      }
     } catch (error) {
       console.error('Complete appointment error:', error);
       res.status(500).json({ message: 'Lỗi server' });
@@ -127,25 +163,66 @@ const doctorController = {
         return res.status(400).json({ message: 'Vui lòng nhập chẩn đoán' });
       }
 
+      const appointmentId = appointment_id ? Number(appointment_id) : null;
+      if (!appointmentId || !Number.isFinite(appointmentId)) {
+        return res.status(400).json({ message: 'Thiếu appointment_id' });
+      }
+
+      if (!doctorId) {
+        return res.status(403).json({ message: 'Tài khoản không liên kết với bác sĩ nào' });
+      }
+
+      const [apptRows] = await db.execute(
+        `SELECT id, doctor_id, patient_id, email
+         FROM appointments
+         WHERE id = ? AND doctor_id = ?
+         LIMIT 1`,
+        [appointmentId, doctorId]
+      );
+      if (apptRows.length === 0) {
+        return res.status(404).json({ message: 'Không tìm thấy lịch hẹn' });
+      }
+
+      let resolvedPatientId = patient_id ? Number(patient_id) : null;
+      if (!resolvedPatientId || !Number.isFinite(resolvedPatientId)) {
+        resolvedPatientId = apptRows[0].patient_id ? Number(apptRows[0].patient_id) : null;
+      }
+
+      if (!resolvedPatientId && apptRows[0].email) {
+        const [[p]] = await db.execute(
+          `SELECT p.id
+           FROM users u
+           JOIN patients p ON p.user_id = u.id
+           WHERE u.email = ? AND u.role = 'patient'
+           LIMIT 1`,
+          [apptRows[0].email]
+        );
+        resolvedPatientId = p?.id || null;
+      }
+
+      if (!resolvedPatientId) {
+        return res.status(400).json({ message: 'Không xác định được bệnh nhân cho lịch hẹn này' });
+      }
+
       const [result] = await db.execute(
         `INSERT INTO medical_records (appointment_id, patient_id, doctor_id, symptoms, diagnosis, treatment, notes, follow_up_date)
          VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-        [appointment_id || null, patient_id, doctorId, symptoms || '', diagnosis, treatment || '', notes || '', follow_up_date || null]
+        [appointmentId, resolvedPatientId, doctorId, symptoms || '', diagnosis, treatment || '', notes || '', follow_up_date || null]
       );
 
       // Update appointment status to in_progress or completed
-      if (appointment_id) {
+      if (appointmentId) {
         // Guard: 1 bác sĩ chỉ được "đang khám" 1 lịch hẹn tại 1 thời điểm
         const [inProgress] = await db.execute(
           "SELECT id FROM appointments WHERE doctor_id = ? AND status = 'in_progress' AND id <> ? LIMIT 1",
-          [doctorId, appointment_id]
+          [doctorId, appointmentId]
         );
         if (inProgress.length > 0) {
           return res.status(409).json({
             message: 'Bác sĩ đang khám một lịch hẹn khác. Vui lòng hoàn thành/hủy lịch hẹn đang khám trước.',
           });
         }
-        await db.execute("UPDATE appointments SET status = 'in_progress' WHERE id = ? AND status = 'confirmed'", [appointment_id]);
+        await db.execute("UPDATE appointments SET status = 'in_progress' WHERE id = ? AND status = 'confirmed'", [appointmentId]);
       }
 
       res.status(201).json({ message: 'Tạo hồ sơ bệnh án thành công', recordId: result.insertId });

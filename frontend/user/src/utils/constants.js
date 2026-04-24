@@ -1,3 +1,5 @@
+import newsMock from '../data/news-mock.json'
+
 /** Trang “Lịch sử phát triển” — layout bài viết (header ngày + từng mục ảnh/chữ) */
 export const ABOUT_HISTORY_META = {
   title: 'Lịch sử phát triển',
@@ -316,167 +318,8 @@ export const DOCUMENT_TEMPLATE_DON_HOC = {
   fileHref: MAU_DON_XIN_HOC_DOC
 }
 
-/** Tin tuyển sinh — 3 mục đầu: khối trên (carousel + cột phải); từ mục thứ 4: lưới phân trang 6/trang */
-export const ADMISSION_NEWS_ITEMS = [
-  {
-    slug: 'thong-bao-tuyen-sinh-dieu-duong-khoa-xix-2026',
-    title: 'Thông báo tuyển sinh Lớp Điều dưỡng chuyên khoa Tai Mũi Họng khóa XIX năm 2026',
-    date: '2026-02-24',
-    imageHero:
-      'https://noh.vn/sites/default/files/styles/img_564_305/public/anh_bai_viet/z77009592041367dbbca510366fb952b0a823cc7a5c626.jpg?itok=a7dzcctY',
-    imageThumb:
-      'https://noh.vn/sites/default/files/styles/img_222_159/public/anh_bai_viet/z77009592041367dbbca510366fb952b0a823cc7a5c626.jpg?itok=_gz5kqCJ',
-    excerpt: 'Thông báo tuyển sinh khóa điều dưỡng chuyên khoa Tai Mũi Họng.',
-    detailIntro:
-      'Ban Giám đốc Bệnh viện Tai Mũi Họng Trung ương thông báo tuyển sinh lớp Điều dưỡng chuyên khoa Tai Mũi Họng khóa XIX — năm 2026.',
-    attachmentLabel: null,
-    attachmentHref: null
-  },
-  {
-    slug: 'thong-bao-tuyen-sinh-lop-tmh-co-ban-khoa-v-2026',
-    title: 'THÔNG BÁO TUYỂN SINH LỚP TAI MŨI HỌNG CƠ BẢN KHÓA V (NĂM 2026)',
-    date: '2026-01-15',
-    imageHero:
-      'https://noh.vn/sites/default/files/styles/img_564_278/public/anh_bai_viet/untitled10.png?itok=R7SIFKUm',
-    imageThumb:
-      'https://noh.vn/sites/default/files/styles/img_222_159/public/anh_bai_viet/untitled10.png?itok=zWyjQW3q',
-    excerpt: 'Tuyển sinh lớp Tai Mũi Họng cơ bản khóa V năm 2026.',
-    detailIntro: 'Thông báo tuyển sinh lớp khám và điều trị bệnh Tai Mũi Họng cơ bản Khóa V — năm 2026.',
-    attachmentLabel: null,
-    attachmentHref: null
-  },
-  {
-    slug: 'don-xin-hoc-lop-kham-dieu-tri-tmh-khoa-v-2023',
-    title: 'Đơn xin học lớp khám và điều trị bệnh Tai Mũi Họng cơ bản Khóa V - năm 2023',
-    date: '2023-02-03',
-    imageHero:
-      'https://noh.vn/sites/default/files/styles/img_564_278/public/anh_bai_viet/10.png?itok=JCzSSmKm',
-    imageThumb:
-      'https://noh.vn/sites/default/files/styles/img_222_159/public/anh_bai_viet/10.png?itok=lcZUw4sq',
-    excerpt: 'Hướng dẫn và mẫu đơn xin học lớp TMH cơ bản.',
-    detailIntro:
-      'Đơn xin học lớp khám và điều trị bệnh Tai Mũi Họng cơ bản Khóa V — năm 2023.',
-    attachmentLabel: 'Mau-don-xin-hoc.doc',
-    attachmentHref: MAU_DON_XIN_HOC_DOC
-  },
-  {
-    slug: 'thong-bao-tuyen-sinh-lop-tmh-co-ban-khoa-iv-2025',
-    title: 'THÔNG BÁO TUYỂN SINH LỚP TAI MŨI HỌNG CƠ BẢN KHÓA IV (NĂM 2025)',
-    date: '2025-08-10',
-    imageHero:
-      'https://noh.vn/sites/default/files/styles/img_564_278/public/anh_bai_viet/untitled10.png?itok=R7SIFKUm',
-    imageThumb:
-      'https://noh.vn/sites/default/files/styles/img_222_159/public/anh_bai_viet/untitled10.png?itok=zWyjQW3q',
-    excerpt: 'Thông báo tuyển sinh khóa IV năm 2025.',
-    detailIntro: 'Thông báo tuyển sinh lớp Tai Mũi Họng cơ bản khóa IV (năm 2025).',
-    attachmentLabel: null,
-    attachmentHref: null
-  },
-  {
-    slug: 'dao-tao-lien-tuc-can-bo-y-te-tmh-2025',
-    title: "Thông báo 'Đào tạo liên tục cho cán bộ y tế chuyên ngành Tai Mũi Họng năm 2025'",
-    date: '2025-05-20',
-    imageHero:
-      'https://images.unsplash.com/photo-1576091160399-112ba8d25d1d?w=800&h=420&fit=crop',
-    imageThumb:
-      'https://images.unsplash.com/photo-1576091160399-112ba8d25d1d?w=280&h=160&fit=crop',
-    excerpt: 'Chương trình đào tạo liên tục năm 2025.',
-    detailIntro: 'Đào tạo liên tục cho cán bộ y tế chuyên ngành Tai Mũi Họng năm 2025.',
-    attachmentLabel: null,
-    attachmentHref: null
-  },
-  {
-    slug: 'tuyen-sinh-lop-tmh-nang-cao-2024',
-    title: 'Thông báo tuyển sinh lớp Tai Mũi Họng nâng cao năm 2024',
-    date: '2024-11-02',
-    imageHero:
-      'https://images.unsplash.com/photo-1519494026892-80bbd2d6fd0d?w=800&h=420&fit=crop',
-    imageThumb:
-      'https://images.unsplash.com/photo-1519494026892-80bbd2d6fd0d?w=280&h=160&fit=crop',
-    excerpt: 'Lớp chuyên sâu dành cho bác sĩ đã qua lớp cơ bản.',
-    detailIntro: 'Tuyển sinh lớp Tai Mũi Họng nâng cao năm 2024.',
-    attachmentLabel: null,
-    attachmentHref: null
-  },
-  {
-    slug: 'cap-nhat-lich-khai-giang-khoa-iii',
-    title: 'Cập nhật lịch khai giảng lớp TMH cơ bản khóa III',
-    date: '2024-06-12',
-    imageHero:
-      'https://noh.vn/sites/default/files/styles/img_564_278/public/anh_bai_viet/10.png?itok=JCzSSmKm',
-    imageThumb:
-      'https://noh.vn/sites/default/files/styles/img_222_159/public/anh_bai_viet/10.png?itok=lcZUw4sq',
-    excerpt: 'Thông báo lịch khai giảng mới.',
-    detailIntro: 'Cập nhật lịch khai giảng lớp TMH cơ bản khóa III.',
-    attachmentLabel: null,
-    attachmentHref: null
-  },
-  {
-    slug: 'huong-dan-ho-so-tuyen-sinh-2024',
-    title: 'Hướng dẫn hồ sơ đăng ký tuyển sinh các lớp đào tạo năm 2024',
-    date: '2024-03-08',
-    imageHero:
-      'https://images.unsplash.com/photo-1454165804606-c3d57bc86b40?w=800&h=420&fit=crop',
-    imageThumb:
-      'https://images.unsplash.com/photo-1454165804606-c3d57bc86b40?w=280&h=160&fit=crop',
-    excerpt: 'Danh mục giấy tờ và thời hạn nộp hồ sơ.',
-    detailIntro: 'Hướng dẫn chi tiết hồ sơ tuyển sinh năm 2024.',
-    attachmentLabel: null,
-    attachmentHref: null
-  },
-  {
-    slug: 'ket-qua-tuyen-sinh-khoa-ii-2023',
-    title: 'Công bố kết quả tuyển sinh lớp TMH cơ bản khóa II — 2023',
-    date: '2023-09-01',
-    imageHero:
-      'https://images.unsplash.com/photo-1582719471384-894fbb16e074?w=800&h=420&fit=crop',
-    imageThumb:
-      'https://images.unsplash.com/photo-1582719471384-894fbb16e074?w=280&h=160&fit=crop',
-    excerpt: 'Danh sách trúng tuyển.',
-    detailIntro: 'Kết quả tuyển sinh lớp TMH cơ bản khóa II năm 2023.',
-    attachmentLabel: null,
-    attachmentHref: null
-  },
-  {
-    slug: 'thong-bao-le-phi-hoc-phi-2023',
-    title: 'Thông báo mức lệ phí và học phí các lớp đào tạo năm 2023',
-    date: '2023-04-18',
-    imageHero:
-      'https://images.unsplash.com/photo-1554224155-6726b3ff858f?w=800&h=420&fit=crop',
-    imageThumb:
-      'https://images.unsplash.com/photo-1554224155-6726b3ff858f?w=280&h=160&fit=crop',
-    excerpt: 'Biểu phí áp dụng từ tháng 5/2023.',
-    detailIntro: 'Thông báo học phí và lệ phí đào tạo năm 2023.',
-    attachmentLabel: null,
-    attachmentHref: null
-  },
-  {
-    slug: 'le-trao-bang-tot-nghiep-khoa-i',
-    title: 'Lễ trao bằng tốt nghiệp lớp Tai Mũi Họng cơ bản khóa I',
-    date: '2022-12-15',
-    imageHero:
-      'https://images.unsplash.com/photo-1523240795612-9a054b0db644?w=800&h=420&fit=crop',
-    imageThumb:
-      'https://images.unsplash.com/photo-1523240795612-9a054b0db644?w=280&h=160&fit=crop',
-    excerpt: 'Thông tin lễ trao bằng và danh sách học viên.',
-    detailIntro: 'Lễ trao bằng tốt nghiệp khóa I.',
-    attachmentLabel: null,
-    attachmentHref: null
-  },
-  {
-    slug: 'ke-hoach-tuyen-sinh-nam-2022',
-    title: 'Kế hoạch tuyển sinh các lớp đào tạo năm 2022',
-    date: '2022-01-20',
-    imageHero:
-      'https://images.unsplash.com/photo-1505751172876-fa1923c5c528?w=800&h=420&fit=crop',
-    imageThumb:
-      'https://images.unsplash.com/photo-1505751172876-fa1923c5c528?w=280&h=160&fit=crop',
-    excerpt: 'Tổng quan các lớp mở trong năm.',
-    detailIntro: 'Kế hoạch tuyển sinh năm 2022.',
-    attachmentLabel: null,
-    attachmentHref: null
-  }
-]
+/** Tin tuyển sinh — nguồn: `src/data/news-mock.json` (cùng file seed backend) */
+export const ADMISSION_NEWS_ITEMS = newsMock.admission
 
 // ─── Hero toàn site (LayoutHero — mọi trang): slider ảnh banner noh.vn ───
 /** Banner slider — cùng nguồn Drupal style `quang_cao`; chiều cao hero do CSS (78svh / max ~749px), chiều ngang 100% viewport */
@@ -803,64 +646,8 @@ export const MOCK_DOCTORS = [
   }
 ]
 
-// ─── Mock News ───
-export const MOCK_NEWS = [
-  {
-    id: 1,
-    title: 'Hàng trăm bác sĩ ra quân, khám và sàng lọc miễn phí cho hơn 10.000 người',
-    slug: 'hang-tram-bac-si-ra-quan',
-    category: 'su-kien',
-    categoryLabel: 'Tin tức – Sự kiện',
-    date: '2026-04-07',
-    excerpt: 'Hàng nghìn người đổ về phố đi bộ Trần Nhân Tông từ sáng sớm 5/4, nhiều công nghệ khám hiện đại, tư vấn dinh dưỡng cá thể hóa được triển khai ngay tại sự kiện.',
-    image: 'https://images.unsplash.com/photo-1631815588090-d4bfec5b1ccb?w=600&h=340&fit=crop',
-    content: '<p>Hàng nghìn người đổ về phố đi bộ Trần Nhân Tông từ sáng sớm 5/4...</p>'
-  },
-  {
-    id: 2,
-    title: 'Người dân háo hức tham gia khám sức khỏe miễn phí, chuyên gia nhấn mạnh chủ động phòng bệnh',
-    slug: 'nguoi-dan-hao-hung-kham-suc-khoe',
-    category: 'su-kien',
-    categoryLabel: 'Tin tức – Sự kiện',
-    date: '2026-04-07',
-    excerpt: 'Sáng ngày 5/4, hàng nghìn người dân đã đến tham gia chương trình khám sức khỏe miễn phí tại phố đi bộ.',
-    image: 'https://images.unsplash.com/photo-1666214280557-f1b5022eb634?w=600&h=340&fit=crop',
-    content: '<p>Sáng ngày 5/4, hàng nghìn người dân...</p>'
-  },
-  {
-    id: 3,
-    title: 'Bệnh viện TMH TW khám, tư vấn miễn phí cho hàng trăm người dân tại Ngày hội "Vì một Việt Nam khỏe mạnh"',
-    slug: 'kham-tu-van-mien-phi-ngay-hoi',
-    category: 'su-kien',
-    categoryLabel: 'Tin tức – Sự kiện',
-    date: '2026-04-06',
-    excerpt: 'Hưởng ứng Ngày Sức khỏe toàn dân 7/4, Bệnh viện TMH TW tham gia Ngày hội với nhiều hoạt động ý nghĩa.',
-    image: 'https://images.unsplash.com/photo-1551076805-e1869033e561?w=600&h=340&fit=crop',
-    content: '<p>Hưởng ứng Ngày Sức khỏe toàn dân 7/4...</p>'
-  },
-  {
-    id: 4,
-    title: 'Viêm tai giữa mãn tính: Cảnh báo biến chứng nguy hiểm và cách phòng tránh',
-    slug: 'viem-tai-giua-man-tinh',
-    category: 'nghien-cuu',
-    categoryLabel: 'Hoạt động chuyên khoa',
-    date: '2026-03-25',
-    excerpt: 'Viêm tai giữa mãn tính là tình trạng viêm niêm mạc hòm nhĩ và xương chũm kéo dài trên 12 tuần.',
-    image: 'https://images.unsplash.com/photo-1579684385127-1ef15d508118?w=600&h=340&fit=crop',
-    content: '<p>Viêm tai giữa mãn tính là tình trạng...</p>'
-  },
-  {
-    id: 5,
-    title: 'Những hiểu lầm người Việt thường mắc phải về bệnh viêm xoang',
-    slug: 'hieu-lam-ve-viem-xoang',
-    category: 'nghien-cuu',
-    categoryLabel: 'Hỏi đáp',
-    date: '2026-03-20',
-    excerpt: 'Viêm xoang là một trong những bệnh lý thường gặp trong chuyên khoa Tai Mũi Họng, chiếm khoảng 15% dân số.',
-    image: 'https://images.unsplash.com/photo-1581595220892-b0739db3ba8c?w=600&h=340&fit=crop',
-    content: '<p>Viêm xoang là một trong những bệnh lý...</p>'
-  }
-]
+// ─── Mock tin tức (cùng nguồn news-mock.json) — fallback khi API lỗi ───
+export const MOCK_NEWS = newsMock.general
 
 // ─── Hospital Info ───
 export const HOSPITAL_INFO = {
@@ -870,7 +657,7 @@ export const HOSPITAL_INFO = {
   phone: '(84-24) 3868 6050',
   fax: '(84-24) 3868 6522',
   hotline: '1900 561 500',
-  workingHours: '07h30 - 16h30 (Thứ 2 đến Thứ 7)',
+  workingHours: '',
   email: 'info@noh.vn',
   website: 'https://noh.vn'
 }

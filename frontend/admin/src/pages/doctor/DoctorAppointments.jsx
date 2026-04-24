@@ -1,6 +1,6 @@
 // frontend/src/pages/doctor/DoctorAppointments.jsx
 import { useState, useEffect, useCallback } from 'react';
-import { ClipboardEdit, PlayCircle, CheckCircle, Plus, Trash2 } from 'lucide-react';
+import { ClipboardEdit, PlayCircle, CheckCircle, Plus, Trash2, Check } from 'lucide-react';
 import api from '../../utils/api';
 import { DataTable, StatusBadge } from '../../components/admin';
 
@@ -98,6 +98,21 @@ const DoctorAppointments = () => {
     { key: 'status', title: 'Trạng thái', render: (val) => <StatusBadge status={val} /> },
     { key: 'actions', title: 'Thao tác', render: (_, row) => (
       <div className="flex items-center gap-2">
+        {row.status === 'pending' && (
+          <button
+            onClick={async () => {
+              try {
+                await api.patch(`/admin/appointments/${row.id}/confirm`)
+                fetchData()
+              } catch (err) {
+                alert(err.response?.data?.message || 'Có lỗi')
+              }
+            }}
+            className="flex items-center gap-1 px-3 py-1.5 text-sm text-green-700 hover:bg-green-50 rounded-lg"
+          >
+            <Check size={16} /> Xác nhận
+          </button>
+        )}
         {row.status === 'confirmed' && (
           <button
             onClick={async () => {
@@ -148,6 +163,7 @@ const DoctorAppointments = () => {
 
   const statuses = [
     { value: '', label: 'Tất cả' },
+    { value: 'pending', label: 'Chờ xác nhận' },
     { value: 'confirmed', label: 'Đã xác nhận' },
     { value: 'in_progress', label: 'Đang khám' },
     { value: 'completed', label: 'Hoàn thành' },

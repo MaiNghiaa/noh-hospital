@@ -7,9 +7,11 @@
     "dev": "nodemon server.js",
     "start": "node server.js",
     "seed:all": "node scripts/seedAll.js",
+    "seed:news": "node scripts/seedNewsFromFrontend.js",
     "seed:admin": "node scripts/admin/seedAdmin.js",
     "seed:medicines": "node scripts/admin/seedMedicines.js",
     "test": "jest",
+    "test:nw": "WATCHMAN_DISABLE=1 jest",
     "test:coverage": "jest --coverage",
     "test:watch": "jest --watch",
     "test:hospital": "jest tests/hospital/",
@@ -17,7 +19,8 @@
     "test:doctor": "jest tests/doctor/",
     "test:user": "jest tests/user/",
     "test:middleware": "jest tests/middleware/",
-    "test:integration": "jest tests/integration/"
+    "test:integration": "jest tests/integration/",
+    "test:flow": "WATCHMAN_DISABLE=1 jest tests/flow/"
   },
   "dependencies": {
     "bcryptjs": "^3.0.3",
@@ -28,7 +31,8 @@
     "express-validator": "^7.3.2",
     "jsonwebtoken": "^9.0.3",
     "multer": "^2.1.1",
-    "mysql2": "^3.14.0"
+    "mysql2": "^3.14.0",
+    "nodemailer": "^8.0.5"
   },
   "devDependencies": {
     "jest": "^30.0.5",
@@ -36,4 +40,3 @@
     "supertest": "^7.1.4"
   }
 }
-

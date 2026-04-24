@@ -11,6 +11,7 @@ const cookieParser = require('cookie-parser');
 const hospitalApiRoutes = require('./routes/hospital/api');
 const { authRoutes, adminRoutes, doctorRoutes } = require('./routes/admin');
 const userRoutes = require('./routes/user');
+const { pool } = require('./config/db');
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -88,9 +89,39 @@ app.use((err, req, res, next) => {
   res.status(500).json({ success: false, message: err.message || 'Internal server error' });
 });
 
-app.listen(PORT, () => {
+const server = app.listen(PORT, () => {
   console.log(`\nNOH Monorepo API`);
   console.log(`   http://localhost:${PORT}`);
   console.log(`   API: http://localhost:${PORT}/api\n`);
 });
+
+server.on('error', (err) => {
+  if (err?.code === 'EADDRINUSE') {
+    console.error(`Port ${PORT} is already in use. Exiting so nodemon can restart cleanly.`);
+    process.exit(1);
+  }
+  console.error('Server listen error:', err);
+  process.exit(1);
+});
+
+let shuttingDown = false;
+async function shutdown(signal) {
+  if (shuttingDown) return;
+  shuttingDown = true;
+  try {
+    console.log(`\nReceived ${signal}. Shutting down...`);
+    await new Promise((resolve) => server.close(resolve));
+  } catch (e) {
+    // ignore
+  }
+  try {
+    await pool.end();
+  } catch (e) {
+    // ignore
+  }
+  process.exit(0);
+}
+
+process.on('SIGINT', () => shutdown('SIGINT'));
+process.on('SIGTERM', () => shutdown('SIGTERM'));
 

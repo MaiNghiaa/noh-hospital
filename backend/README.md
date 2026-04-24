@@ -19,6 +19,8 @@ npm run seed:all
 
 File seed: `backend/scripts/seedAll.js`
 
+Tin tức + tuyển sinh dùng **một file dùng chung** với frontend: `frontend/user/src/data/news-mock.json`. Khi sửa nội dung, cập nhật file đó, rồi chạy `npm run seed:news -- --wipe` (hoặc `npm run seed:all` để reset cả DB). Ảnh từ URL được tải / ảnh từ đường dẫn `/...` trong `public` được copy vào `uploads/news/seed`.
+
 ## Tài khoản mẫu (sau khi seed)
 
 Sau khi chạy `npm run seed:all`, bạn có thể đăng nhập bằng các tài khoản sau:

@@ -50,17 +50,17 @@ export default function MainNav({ variant = 'default' }) {
   return (
     <div
       className={cn(
-        'relative z-10 max-w-7xl mx-auto px-4 sm:px-6',
+        isHero ? 'relative z-10 w-full px-4 sm:px-6' : 'relative z-10 max-w-7xl mx-auto px-4 sm:px-6',
         isHero && 'pt-[20px]',
         !isHero && 'bg-white border-b border-gray-100'
       )}
     >
-        <div className="flex min-h-14 items-center justify-between gap-2 sm:min-h-16 lg:min-h-20 py-[3px]">
-        <Link to="/" className="flex shrink-0 items-center gap-3 pr-[30px]">
+      <div className="flex min-h-14 items-center gap-2 sm:min-h-16 lg:min-h-20 py-[3px]">
+        <Link to="/" className="flex shrink-0 items-center gap-3">
           <img
             src="https://noh.vn/sites/default/files/styles/quang_cao/public/file_anhquangcao/logo-bv.png?itok=LUjnYJ6m"
             alt="Logo"
-            className="w-[56px] h-[56px] sm:w-[72px] sm:h-[72px] lg:w-[100px] lg:h-[100px]"
+            className="w-[44px] h-[44px] sm:w-[64px] sm:h-[64px] lg:w-[96px] lg:h-[96px]"
           />
         </Link>
 
@@ -147,11 +147,11 @@ export default function MainNav({ variant = 'default' }) {
           ))}
         </nav>
 
-        <div className="flex shrink-0 items-center gap-2">
+        <div className="ml-auto flex shrink-0 items-center gap-2">
           <Link
             to="/tim-kiem"
             className={cn(
-              'hidden lg:inline-flex h-10 w-10 shrink-0 items-center justify-center transition-colors',
+              'hidden h-10 w-10 shrink-0 items-center justify-center transition-colors',
               isHero ? 'text-white/90 hover:text-white' : 'text-gray-600 hover:text-hospital-blue'
             )}
             aria-label="Tìm kiếm"

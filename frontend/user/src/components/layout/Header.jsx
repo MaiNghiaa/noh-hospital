@@ -17,16 +17,14 @@ export default function Header() {
   }, [])
 
   const { workingTime, workingDays } = useMemo(() => {
-    // Expected format: "07h30 - 16h30 (Thứ 2 đến Thứ 7)"
     const raw = HOSPITAL_INFO.workingHours || ''
     const openParenIdx = raw.indexOf('(')
     const closeParenIdx = raw.lastIndexOf(')')
-    const time = openParenIdx > 0 ? raw.slice(0, openParenIdx).trim() : raw.trim()
     const days =
       openParenIdx >= 0 && closeParenIdx > openParenIdx
         ? raw.slice(openParenIdx, closeParenIdx + 1).trim()
         : ''
-    return { workingTime: time, workingDays: days }
+    return {  workingDays: days }
   }, [])
 
   return (
@@ -42,12 +40,15 @@ export default function Header() {
           {/* Left */}
           <div className="flex flex-wrap items-center gap-x-2 gap-y-1 min-w-0">
             <Clock size={14} className="text-black shrink-0" />
-            <span className="text-black">Giờ làm việc</span>
-            <span className="font-bold text-[#1f4d8e]">{workingTime}</span>
-            <span className="text-black hidden sm:inline">/</span>
-            <span className="text-black">Đặt lịch khám:</span>
-            <span className="font-bold text-[#1f4d8e]">{HOSPITAL_INFO.hotline}</span>
-            {workingDays ? <span className="text-[#c2c2c2] text-[11px] sm:text-[13px] w-full sm:w-auto">{workingDays}</span> : null}
+            <span className="font-bold text-[#1f4d8e] whitespace-nowrap">{workingTime}</span>
+            {/* md screens already show hotline on the right; keep left compact to avoid wrapping */}
+            <span className="text-black hidden lg:inline">Đặt lịch khám:</span>
+            <span className="font-bold text-[#1f4d8e] whitespace-nowrap hidden lg:inline">{HOSPITAL_INFO.hotline}</span>
+            {workingDays ? (
+              <span className="text-[#c2c2c2] text-[11px] sm:text-[13px] w-full sm:w-auto truncate">
+                {workingDays}
+              </span>
+            ) : null}
           </div>
 
           {/* Right — desktop */}

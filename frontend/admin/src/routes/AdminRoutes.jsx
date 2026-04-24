@@ -40,7 +40,7 @@ const AdminRoutes = () => {
           <ProtectedRoute roles={['admin', 'super_admin']}><PatientManagement /></ProtectedRoute>
         } />
         <Route path="appointments" element={
-          <ProtectedRoute roles={['admin', 'super_admin', 'doctor']}><AppointmentManagement /></ProtectedRoute>
+          <ProtectedRoute roles={['admin', 'super_admin']}><AppointmentManagement /></ProtectedRoute>
         } />
         <Route path="departments" element={
           <ProtectedRoute roles={['admin', 'super_admin']}><DepartmentManagement /></ProtectedRoute>

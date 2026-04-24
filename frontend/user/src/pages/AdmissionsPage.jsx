@@ -1,11 +1,17 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { ADMISSION_NEWS_ITEMS } from '../utils/constants'
+import { mapNewsRowToAdmissionListItem } from '../utils/admissionMappers'
 import { cn } from '../utils/helpers'
+import newsService from '../services/newsService'
 
 const CAROUSEL_MS = 6000
 const GRID_PAGE_SIZE = 6
 const BASE = '/danh-cho-hoc-vien/thong-tin-tuyen-sinh'
+
+function admissionThumbUrl(item) {
+  return item.imageThumb || item.imageHero || ''
+}
 
 function parseDateParts(iso) {
   const [y, m, d] = iso.split('-').map(Number)
@@ -16,8 +22,26 @@ function parseDateParts(iso) {
 }
 
 export default function AdmissionsPage() {
-  const topThree = useMemo(() => ADMISSION_NEWS_ITEMS.slice(0, 3), [])
-  const rest = useMemo(() => ADMISSION_NEWS_ITEMS.slice(3), [])
+  const [admissionItems, setAdmissionItems] = useState(ADMISSION_NEWS_ITEMS)
+
+  useEffect(() => {
+    let cancel = false
+    async function load() {
+      try {
+        const res = await newsService.getByCategory('tuyen-sinh', 1, 200)
+        const rows = res.data
+        if (cancel || !Array.isArray(rows) || rows.length === 0) return
+        setAdmissionItems(rows.map(mapNewsRowToAdmissionListItem))
+      } catch {
+        /* giữ dữ liệu từ constants */
+      }
+    }
+    load()
+    return () => { cancel = true }
+  }, [])
+
+  const topThree = useMemo(() => admissionItems.slice(0, 3), [admissionItems])
+  const rest = useMemo(() => admissionItems.slice(3), [admissionItems])
 
   const [sort, setSort] = useState('new')
   const sortedRest = useMemo(() => {
@@ -145,7 +169,7 @@ export default function AdmissionsPage() {
                   >
                     <div className="relative h-[88px] w-[120px] shrink-0 overflow-hidden rounded-sm border border-gray-200 bg-gray-100 sm:h-[96px] sm:w-[132px]">
                       <img
-                        src={item.imageThumb}
+                        src={admissionThumbUrl(item)}
                         alt=""
                         className="h-full w-full object-cover transition-transform group-hover:scale-105"
                         loading="lazy"
@@ -187,7 +211,7 @@ export default function AdmissionsPage() {
               >
                 <div className="relative h-[100px] w-[140px] shrink-0 overflow-hidden rounded-sm border border-gray-200 bg-gray-50">
                   <img
-                    src={item.imageThumb}
+                    src={admissionThumbUrl(item)}
                     alt=""
                     className="h-full w-full object-cover transition-transform group-hover:scale-105"
                     loading="lazy"

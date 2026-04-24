@@ -48,6 +48,7 @@
 
   html {
     scroll-behavior: smooth;
+    min-width: 320px;
   }
 
   body {
@@ -57,6 +58,11 @@
     background-color: #FAFBFD;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
+    min-width: 320px;
+  }
+
+  #root {
+    min-width: 320px;
   }
 
   /* Keep headings consistent with the main typeface by default.

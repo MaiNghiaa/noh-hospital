@@ -82,7 +82,7 @@ CREATE TABLE IF NOT EXISTS news (
   id INT PRIMARY KEY AUTO_INCREMENT,
   title VARCHAR(500) NOT NULL,
   slug VARCHAR(500) UNIQUE NOT NULL,
-  category ENUM('su-kien', 'nghien-cuu', 'hop-tac', 'thong-bao', 'hoi-dap') NOT NULL DEFAULT 'su-kien',
+  category ENUM('su-kien', 'nghien-cuu', 'hop-tac', 'thong-bao', 'hoi-dap', 'tuyen-sinh') NOT NULL DEFAULT 'su-kien',
   excerpt TEXT,
   content LONGTEXT,
   image VARCHAR(500),

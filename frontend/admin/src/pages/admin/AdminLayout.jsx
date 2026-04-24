@@ -23,7 +23,7 @@ const AdminLayout = () => {
     { label: 'Tổng quan', icon: LayoutDashboard, path: '/admin/dashboard', roles: ['admin', 'super_admin'] },
     { label: 'Quản lý Bác sĩ', icon: Stethoscope, path: '/admin/doctors', roles: ['admin', 'super_admin'] },
     { label: 'Quản lý Bệnh nhân', icon: Users, path: '/admin/patients', roles: ['admin', 'super_admin'] },
-    { label: 'Lịch Khám', icon: Calendar, path: '/admin/appointments', roles: ['admin', 'super_admin', 'doctor'] },
+    { label: 'Lịch Khám', icon: Calendar, path: '/admin/appointments', roles: ['admin', 'super_admin'] },
     { label: 'Chuyên Khoa', icon: Building2, path: '/admin/departments', roles: ['admin', 'super_admin'] },
     { label: 'Tin Tức', icon: Newspaper, path: '/admin/news', roles: ['admin', 'super_admin'] },
     { label: 'Danh mục Thuốc', icon: Pill, path: '/admin/medicines', roles: ['admin', 'super_admin', 'doctor'] },

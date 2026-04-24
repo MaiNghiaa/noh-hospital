@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import { ChevronRight, Calendar, Tag, Share2 } from 'lucide-react'
 import { formatDate } from '../utils/helpers'
+import { newsCategoryLabel } from '../utils/newsDisplay'
 import newsService from '../services/newsService'
 
 export default function NewsDetailPage() {
@@ -79,7 +80,7 @@ export default function NewsDetailPage() {
                   </span>
                   <span className="flex items-center gap-1.5">
                     <Tag size={14} />
-                    {article.category}
+                    {newsCategoryLabel(article.category)}
                   </span>
                 </div>
 

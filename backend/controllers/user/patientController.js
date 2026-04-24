@@ -58,6 +58,15 @@ const patientController = {
       const user = users[0];
       const patientId = patients.length > 0 ? patients[0].id : null;
 
+      let doctorBusy = false;
+      if (pickedDoctorId) {
+        const [inProgress] = await db.execute(
+          `SELECT id FROM appointments WHERE doctor_id = ? AND status = 'in_progress' LIMIT 1`,
+          [pickedDoctorId]
+        );
+        doctorBusy = inProgress.length > 0;
+      }
+
       const [result] = await db.execute(
         `INSERT INTO appointments (full_name, phone, email, department, doctor_id, appointment_date, appointment_time, reason, patient_id, status)
          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending')`,
@@ -66,8 +75,10 @@ const patientController = {
 
       res.status(201).json({
         success: true,
-        message: 'Đặt lịch khám thành công. Bệnh viện sẽ xác nhận lịch hẹn sớm.',
-        data: { id: result.insertId },
+        message: doctorBusy
+          ? 'Đặt lịch khám thành công. Bác sĩ đang khám, bệnh viện sẽ sắp xếp/điều chỉnh lịch hẹn sớm.'
+          : 'Đặt lịch khám thành công. Bệnh viện sẽ xác nhận lịch hẹn sớm.',
+        data: { id: result.insertId, doctorBusy },
       });
     } catch (error) {
       console.error('Create appointment error:', error);

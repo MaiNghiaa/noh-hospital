@@ -3,6 +3,7 @@ import { Link, useSearchParams } from 'react-router-dom'
 import { ChevronRight } from 'lucide-react'
 import Card from '../components/common/Card'
 import { formatShortDate, cn } from '../utils/helpers'
+import { newsCategoryLabel } from '../utils/newsDisplay'
 import newsService from '../services/newsService'
 
 const CATEGORIES = [
@@ -100,7 +101,9 @@ export default function NewsPage() {
                       </div>
                     </div>
                     <div className="p-5">
-                      <span className="text-xs text-hospital-teal font-semibold">{categoryLabel}</span>
+                      <span className="text-xs text-hospital-teal font-semibold">
+                        {activeCat === 'all' ? newsCategoryLabel(news.category) : categoryLabel}
+                      </span>
                       <h3 className="font-display text-base font-bold text-hospital-dark mt-2 leading-snug line-clamp-2 group-hover:text-hospital-teal transition-colors">
                         {news.title}
                       </h3>

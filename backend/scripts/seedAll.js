@@ -6,6 +6,7 @@ const path = require('path');
 const fs = require('fs');
 const mysql = require('mysql2/promise');
 const bcrypt = require('bcryptjs');
+const { seedNewsFromFrontendData } = require('./seedNewsFromFrontend');
 
 const envBackend = path.join(__dirname, '..', '.env');
 const envRoot = path.join(__dirname, '..', '..', '.env');
@@ -95,29 +96,6 @@ const doctors = [
   { name: 'BSCKI. Đặng Thị Ngọc', title: 'Bác sĩ Chuyên khoa I', specialty: 'Xét nghiệm TMH', dept: 12, exp: '10+ năm', edu: 'Đại học Y Hà Nội' },
 ];
 
-const newsData = [
-  { title: 'Hàng trăm bác sĩ ra quân, khám và sàng lọc miễn phí cho hơn 10.000 người', category: 'su-kien', excerpt: 'Hàng nghìn người đổ về phố đi bộ Trần Nhân Tông từ sáng sớm 5/4 để được khám sàng lọc miễn phí các bệnh lý Tai Mũi Họng.' },
-  { title: 'Người dân háo hức tham gia khám sức khỏe miễn phí', category: 'su-kien', excerpt: 'Chương trình khám sức khỏe miễn phí tại phố đi bộ thu hút đông đảo người dân Thủ đô.' },
-  { title: 'BV TMH TW khám, tư vấn miễn phí tại Ngày hội Vì một Việt Nam khỏe mạnh', category: 'su-kien', excerpt: 'Hưởng ứng Ngày Sức khỏe toàn dân 7/4, BV TMH TW tổ chức khám miễn phí cho người dân.' },
-  { title: 'Viêm tai giữa mãn tính: Cảnh báo biến chứng nguy hiểm', category: 'nghien-cuu', excerpt: 'Viêm tai giữa mãn tính chiếm khoảng 2-4% dân số, nếu không điều trị kịp thời có thể gây biến chứng nặng.' },
-  { title: 'Những hiểu lầm người Việt thường mắc phải về bệnh viêm xoang', category: 'hoi-dap', excerpt: 'Viêm xoang chiếm khoảng 15% dân số. Nhiều người vẫn hiểu sai về nguyên nhân và cách điều trị.' },
-  { title: 'Ứng dụng AI trong chẩn đoán ung thư vòm họng giai đoạn sớm', category: 'nghien-cuu', excerpt: 'Nghiên cứu mới cho thấy AI có thể hỗ trợ phát hiện sớm ung thư vòm họng với độ chính xác cao.' },
-  { title: 'Phẫu thuật nội soi mũi xoang: Kỹ thuật mới ít xâm lấn', category: 'nghien-cuu', excerpt: 'Kỹ thuật FESS cải tiến giúp giảm đau, rút ngắn thời gian hồi phục sau phẫu thuật mũi xoang.' },
-  { title: 'Hội thảo quốc tế về điều trị nghe kém ở trẻ em', category: 'su-kien', excerpt: 'BV TMH TW đồng tổ chức hội thảo quốc tế về cấy ốc tai điện tử và phục hồi chức năng nghe cho trẻ em.' },
-  { title: 'Cách phòng tránh viêm mũi dị ứng khi giao mùa', category: 'hoi-dap', excerpt: 'Thời tiết giao mùa khiến nhiều người bị viêm mũi dị ứng. Bác sĩ tư vấn cách phòng tránh hiệu quả.' },
-  { title: 'Thông báo lịch nghỉ lễ 30/4 - 1/5 và lịch trực cấp cứu', category: 'thong-bao', excerpt: 'BV TMH TW thông báo lịch làm việc và trực cấp cứu trong dịp lễ 30/4 - 1/5.' },
-  { title: 'Ký kết hợp tác với Bệnh viện Seoul National University', category: 'hop-tac', excerpt: 'BV TMH TW ký kết MOU với Bệnh viện Đại học Quốc gia Seoul trong lĩnh vực cấy ốc tai điện tử.' },
-  { title: 'Cắt amidan có đau không? Giải đáp từ chuyên gia', category: 'hoi-dap', excerpt: 'Nhiều phụ huynh lo lắng khi con cần cắt amidan. Chuyên gia giải đáp thắc mắc thường gặp.' },
-  { title: 'Triển khai phẫu thuật Robot trong điều trị ung thư đầu cổ', category: 'nghien-cuu', excerpt: 'BV TMH TW là đơn vị đầu tiên triển khai phẫu thuật Robot TORS trong điều trị ung thư đầu cổ.' },
-  { title: 'Hợp tác đào tạo với Đại học Y Tokyo', category: 'hop-tac', excerpt: 'Chương trình trao đổi bác sĩ nội trú giữa BV TMH TW và Đại học Y Tokyo chính thức khởi động.' },
-  { title: 'Thông báo điều chỉnh giá dịch vụ khám bệnh từ 01/07/2026', category: 'thong-bao', excerpt: 'Theo quy định mới, giá dịch vụ khám bệnh sẽ được điều chỉnh từ ngày 01/07/2026.' },
-  { title: 'Nguy cơ mất thính lực do sử dụng tai nghe quá nhiều', category: 'hoi-dap', excerpt: 'Xu hướng sử dụng tai nghe liên tục đang gây ra tình trạng giảm thính lực ở giới trẻ.' },
-  { title: 'BV TMH TW đạt chứng nhận chất lượng ISO 9001:2015', category: 'su-kien', excerpt: 'Bệnh viện vừa đạt chứng nhận hệ thống quản lý chất lượng ISO 9001:2015 trong lĩnh vực y tế.' },
-  { title: 'Nghiên cứu mới về điều trị ù tai bằng liệu pháp âm thanh', category: 'nghien-cuu', excerpt: 'Kết quả bước đầu cho thấy liệu pháp âm thanh (TRT) giúp giảm triệu chứng ù tai hiệu quả.' },
-  { title: 'Hướng dẫn chăm sóc sau phẫu thuật nội soi mũi xoang', category: 'hoi-dap', excerpt: 'Chăm sóc đúng cách sau phẫu thuật giúp vết thương mau lành và giảm nguy cơ tái phát.' },
-  { title: 'Khánh thành khu phẫu thuật mới với trang thiết bị hiện đại', category: 'su-kien', excerpt: 'Khu phẫu thuật mới được trang bị hệ thống phòng mổ tiêu chuẩn quốc tế, đáp ứng nhu cầu phẫu thuật ngày càng tăng.' },
-];
-
 const medicines = [
   { name: 'Amoxicillin 500mg', ingredient: 'Amoxicillin', unit: 'viên', category: 'Kháng sinh' },
   { name: 'Paracetamol 500mg', ingredient: 'Paracetamol', unit: 'viên', category: 'Giảm đau hạ sốt' },
@@ -199,6 +177,7 @@ const treatments = [
 // ═══════════════════════════════════════════════════════════════
 
 async function seed() {
+  let newsCount = 0;
   const connection = await mysql.createConnection({
     host: process.env.DB_HOST || 'localhost',
     port: process.env.DB_PORT ? Number(process.env.DB_PORT) : 3306,
@@ -284,18 +263,10 @@ async function seed() {
     }
     console.log(`   ✅ ${scheduleCount} doctor schedules`);
 
-    // ─── 4. NEWS (20) ───
-    console.log('📰 Seed news...');
-    for (let i = 0; i < newsData.length; i++) {
-      const n = newsData[i];
-      const pubDate = randomDate(new Date('2026-01-01'), new Date('2026-04-14'));
-      const content = `<h2>${n.title}</h2><p>${n.excerpt}</p><p>Nội dung chi tiết của bài viết sẽ được cập nhật. Đây là dữ liệu mẫu để hiển thị giao diện website. Bệnh viện Tai Mũi Họng Trung ương luôn nỗ lực mang lại dịch vụ y tế chất lượng cao cho người bệnh.</p><p>Liên hệ: 024.3825.3353 để biết thêm chi tiết.</p>`;
-      await connection.execute(
-        `INSERT INTO news (title, slug, category, excerpt, content, author, view_count, is_featured, is_published, published_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 1, ?)`,
-        [n.title, slugify(n.title) + '-' + (i + 1), n.category, n.excerpt, content, 'Ban Biên tập', Math.floor(Math.random() * 5000), i < 3 ? 1 : 0, formatDateTime(pubDate)]
-      );
-    }
-    console.log(`   ✅ ${newsData.length} news articles`);
+    // ─── 4. NEWS (MOCK từ frontend + tin tuyển sinh) ───
+    console.log('📰 Seed news (MOCK + tuyển sinh, ảnh → uploads)...');
+    newsCount = await seedNewsFromFrontendData(connection);
+    console.log(`   ✅ ${newsCount} bài tin`);
 
     // ─── 5. MEDICINES (20) ───
     console.log('💊 Seed medicines...');
@@ -492,7 +463,7 @@ async function seed() {
     console.log(`   Departments:       ${departments.length}`);
     console.log(`   Doctors:           ${doctors.length}`);
     console.log(`   Doctor Schedules:  ${scheduleCount}`);
-    console.log(`   News:              ${newsData.length}`);
+    console.log(`   News:              ${newsCount}`);
     console.log(`   Medicines:         ${medicines.length}`);
     console.log(`   Users:             ${totalUsers}`);
     console.log(`   Patients:          ${patientNames.length}`);
@@ -501,7 +472,7 @@ async function seed() {
     console.log(`   Prescriptions:     ${prescriptionCount}`);
     console.log(`   Contact Messages:  ${contactMessages.length}`);
     console.log('────────────────────────────────────────────');
-    const total = departments.length + doctors.length + scheduleCount + newsData.length + medicines.length + totalUsers + patientNames.length + 30 + recordIds.length + prescriptionCount + contactMessages.length;
+    const total = departments.length + doctors.length + scheduleCount + newsCount + medicines.length + totalUsers + patientNames.length + 30 + recordIds.length + prescriptionCount + contactMessages.length;
     console.log(`   TỔNG:             ~${total} bản ghi`);
     console.log('════════════════════════════════════════════');
     console.log('\n📌 THÔNG TIN ĐĂNG NHẬP:');

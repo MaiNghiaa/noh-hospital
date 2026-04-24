@@ -37,8 +37,9 @@ router.get('/appointments', requireRole('admin', 'super_admin', 'doctor'), admin
 router.get('/appointments/calendar', requireRole('admin', 'super_admin'), adminController.getAppointmentCalendar);
 router.get('/appointments/:id', requireRole('admin', 'super_admin', 'doctor'), adminController.getAppointmentById);
 router.patch('/appointments/:id/assign-doctor', requireRole('admin', 'super_admin'), adminController.assignAppointmentDoctor);
-router.patch('/appointments/:id/confirm', requireRole('admin', 'super_admin'), adminController.confirmAppointment);
+router.patch('/appointments/:id/confirm', requireRole('admin', 'super_admin', 'doctor'), adminController.confirmAppointment);
 router.patch('/appointments/:id/cancel', requireRole('admin', 'super_admin'), adminController.cancelAppointment);
+router.patch('/appointments/:id/reschedule', requireRole('admin', 'super_admin'), adminController.rescheduleAppointment);
 
 // ==================== PATIENTS ====================
 router.get('/patients', requireRole('admin', 'super_admin'), adminController.getPatients);

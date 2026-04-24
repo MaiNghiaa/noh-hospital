@@ -3,8 +3,10 @@ import { useState, useEffect, useCallback } from 'react';
 import { Check, X, Eye, Filter, Save } from 'lucide-react';
 import api from '../../utils/api';
 import { DataTable, SearchInput, Pagination, ConfirmModal, StatusBadge } from '../../components/admin';
+import { useAuth } from '../../context/AuthContext';
 
 const AppointmentManagement = () => {
+  const { user } = useAuth();
   const [appointments, setAppointments] = useState([]);
   const [doctors, setDoctors] = useState([]);
   const [availableDoctorsByAppt, setAvailableDoctorsByAppt] = useState({});
@@ -13,6 +15,7 @@ const AppointmentManagement = () => {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
+  const [doctorFilter, setDoctorFilter] = useState('all'); // all | mine
   const [confirmAction, setConfirmAction] = useState(null);
   const [cancelReason, setCancelReason] = useState('');
   const [detail, setDetail] = useState(null);
@@ -20,8 +23,14 @@ const AppointmentManagement = () => {
   const fetchData = useCallback(async () => {
     setLoading(true);
     try {
+      const doctorIdParam = doctorFilter === 'mine' ? (user?.doctor_id || undefined) : undefined;
       const res = await api.get('/admin/appointments', {
-        params: { page: pagination.page, status: statusFilter || undefined, search: search || undefined },
+        params: {
+          page: pagination.page,
+          status: statusFilter || undefined,
+          search: search || undefined,
+          doctor_id: doctorIdParam,
+        },
       });
       setAppointments(res.data.data);
       setPagination(res.data.pagination);
@@ -30,7 +39,7 @@ const AppointmentManagement = () => {
     } finally {
       setLoading(false);
     }
-  }, [pagination.page, statusFilter, search]);
+  }, [pagination.page, statusFilter, search, doctorFilter, user?.doctor_id]);
 
   useEffect(() => { fetchData(); }, [fetchData]);
 
@@ -199,18 +208,37 @@ const AppointmentManagement = () => {
           <div className="max-w-sm flex-1">
             <SearchInput value={search} onChange={(v) => { setSearch(v); setPagination(p => ({ ...p, page: 1 })); }} placeholder="Tìm tên, SĐT, email..." />
           </div>
-          <div className="flex gap-2 flex-wrap">
-            {statuses.map((s) => (
-              <button
-                key={s.value}
-                onClick={() => { setStatusFilter(s.value); setPagination(p => ({ ...p, page: 1 })); }}
-                className={`px-3 py-1.5 rounded-lg text-xs font-medium transition ${
-                  statusFilter === s.value ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                }`}
+          <div className="flex gap-2 flex-wrap items-center">
+            <div className="min-w-[180px]">
+              <select
+                value={statusFilter}
+                onChange={(e) => {
+                  setStatusFilter(e.target.value);
+                  setPagination((p) => ({ ...p, page: 1 }));
+                }}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none"
               >
-                {s.label}
-              </button>
-            ))}
+                {statuses.map((s) => (
+                  <option key={s.value} value={s.value}>
+                    {s.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div className="min-w-[180px]">
+              <select
+                value={doctorFilter}
+                onChange={(e) => {
+                  setDoctorFilter(e.target.value);
+                  setPagination((p) => ({ ...p, page: 1 }));
+                }}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+              >
+                <option value="all">Tất cả bác sĩ</option>
+                <option value="mine">Bác sĩ của tôi</option>
+              </select>
+            </div>
           </div>
         </div>
 

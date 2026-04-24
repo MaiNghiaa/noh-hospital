@@ -13,11 +13,13 @@ const News = {
 
     const [rows] = await pool.query(
       `SELECT * FROM news
-       WHERE is_published = 1
+       WHERE is_published = 1 AND category <> 'tuyen-sinh'
        ORDER BY published_at DESC
        LIMIT ${safeLimit} OFFSET ${offset}`
     )
-    const [[{ total }]] = await pool.query('SELECT COUNT(*) as total FROM news WHERE is_published = 1')
+    const [[{ total }]] = await pool.query(
+      "SELECT COUNT(*) as total FROM news WHERE is_published = 1 AND category <> 'tuyen-sinh'"
+    )
     return { data: rows, total, page: safePage, limit: safeLimit }
   },
 

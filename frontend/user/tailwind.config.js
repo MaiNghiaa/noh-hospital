@@ -3,6 +3,10 @@ export default {
   content: ['./index.html', './src/**/*.{js,jsx}'],
   theme: {
     extend: {
+      screens: {
+        // Custom breakpoint to match design requirement
+        desktop: '1080px',
+      },
       colors: {
         primary: {
           50: '#eef7ff',
