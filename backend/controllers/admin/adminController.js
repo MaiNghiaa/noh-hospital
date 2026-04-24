@@ -735,6 +735,50 @@ const adminController = {
 
   // ==================== NEWS MANAGEMENT ====================
 
+  // GET /api/admin/news
+  async getNews(req, res) {
+    try {
+      const { page = 1, limit = 50, search, category, published } = req.query;
+      const pageInt = toPositiveInt(page, 1);
+      const limitInt = Math.min(toPositiveInt(limit, 50), 200);
+      const offsetInt = (pageInt - 1) * limitInt;
+
+      let where = 'WHERE 1=1';
+      const params = [];
+
+      if (typeof published !== 'undefined' && published !== '') {
+        where += ' AND is_published = ?';
+        params.push(published === '1' || published === 'true' ? 1 : 0);
+      }
+
+      if (category) {
+        where += ' AND category = ?';
+        params.push(category);
+      }
+
+      if (search) {
+        where += ' AND (title LIKE ? OR slug LIKE ? OR excerpt LIKE ?)';
+        params.push(`%${search}%`, `%${search}%`, `%${search}%`);
+      }
+
+      const [rows] = await db.execute(
+        `SELECT id, title, slug, category, excerpt, content, image, author, view_count, is_featured,
+                is_published, published_at, created_at, updated_at
+         FROM news
+         ${where}
+         ORDER BY created_at DESC
+         LIMIT ${limitInt} OFFSET ${offsetInt}`,
+        params
+      );
+      const [[{ total }]] = await db.execute(`SELECT COUNT(*) as total FROM news ${where}`, params);
+
+      res.json({ data: rows, total, page: pageInt, limit: limitInt });
+    } catch (error) {
+      console.error('Get admin news error:', error);
+      res.status(500).json({ message: 'Lỗi server' });
+    }
+  },
+
   // POST /api/admin/news
   async createNews(req, res) {
     try {

@@ -55,6 +55,7 @@ router.delete('/departments/:id', requireRole('admin', 'super_admin'), adminCont
 router.patch('/departments/reorder', requireRole('admin', 'super_admin'), adminController.reorderDepartments);
 
 // ==================== NEWS ====================
+router.get('/news', requireRole('admin', 'super_admin'), adminController.getNews);
 router.post('/news', requireRole('admin', 'super_admin'), adminController.createNews);
 router.put('/news/:id', requireRole('admin', 'super_admin'), adminController.updateNews);
 router.delete('/news/:id', requireRole('admin', 'super_admin'), adminController.deleteNews);

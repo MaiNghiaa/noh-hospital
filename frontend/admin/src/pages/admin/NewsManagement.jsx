@@ -5,11 +5,12 @@ import api from '../../utils/api';
 import { DataTable, ConfirmModal, FormModal } from '../../components/admin';
 
 const NEWS_CATEGORIES = [
-  { value: 'tin-tuc-su-kien', label: 'Tin tức - Sự kiện' },
-  { value: 'nghien-cuu-khoa-hoc', label: 'Nghiên cứu Khoa học' },
-  { value: 'thong-tin-thuoc', label: 'Thông tin Thuốc' },
-  { value: 'hop-tac-quoc-te', label: 'Hợp tác Quốc tế' },
-  { value: 'dao-tao-chi-dao-tuyen', label: 'Đào tạo - Chỉ đạo tuyến' },
+  { value: 'su-kien', label: 'Tin tức - Sự kiện' },
+  { value: 'nghien-cuu', label: 'Nghiên cứu khoa học' },
+  { value: 'hop-tac', label: 'Hợp tác quốc tế' },
+  { value: 'thong-bao', label: 'Thông báo' },
+  { value: 'hoi-dap', label: 'Hỏi đáp' },
+  { value: 'tuyen-sinh', label: 'Tuyển sinh' },
 ];
 
 const NewsManagement = () => {
@@ -25,8 +26,8 @@ const NewsManagement = () => {
   const fetchData = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await api.get('/news');
-      setNews(res.data.data || res.data);
+      const res = await api.get('/admin/news?limit=200');
+      setNews(res.data?.data || []);
     } catch (err) { console.error(err); }
     finally { setLoading(false); }
   }, []);
